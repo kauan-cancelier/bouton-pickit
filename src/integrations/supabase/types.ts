@@ -14,7 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      itens: {
+        Row: {
+          codigo: string
+          concluido: boolean | null
+          created_at: string
+          descricao: string
+          id: string
+          lista_id: string
+          pos: number
+          quantidade: number
+          updated_at: string
+        }
+        Insert: {
+          codigo: string
+          concluido?: boolean | null
+          created_at?: string
+          descricao: string
+          id?: string
+          lista_id: string
+          pos: number
+          quantidade: number
+          updated_at?: string
+        }
+        Update: {
+          codigo?: string
+          concluido?: boolean | null
+          created_at?: string
+          descricao?: string
+          id?: string
+          lista_id?: string
+          pos?: number
+          quantidade?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "itens_lista_id_fkey"
+            columns: ["lista_id"]
+            isOneToOne: false
+            referencedRelation: "listas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listas: {
+        Row: {
+          concluida: boolean | null
+          created_at: string
+          data_inicio: string
+          id: string
+          nome: string
+          tempo_total: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          concluida?: boolean | null
+          created_at?: string
+          data_inicio?: string
+          id?: string
+          nome: string
+          tempo_total?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          concluida?: boolean | null
+          created_at?: string
+          data_inicio?: string
+          id?: string
+          nome?: string
+          tempo_total?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
