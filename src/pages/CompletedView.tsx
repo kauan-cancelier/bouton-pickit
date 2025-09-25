@@ -8,6 +8,7 @@ import { formatTime } from "@/lib/textParser";
 interface CompletedState {
   totalTime: number;
   totalItems: number;
+  listName?: string;
 }
 
 export default function CompletedView() {
@@ -46,7 +47,7 @@ export default function CompletedView() {
               ✅ Lista concluída!
             </h1>
             <p className="text-muted-foreground mb-4">
-              Bouton - Roupas de Cama
+              {state.listName || 'Lista'} - Bouton Roupas de Cama
             </p>
           </div>
 

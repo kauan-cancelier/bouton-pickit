@@ -1,40 +1,156 @@
-import { Camera, FileText } from "lucide-react";
+import { Camera, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { processImageAndExtractItems } from "@/lib/ocrService";
 import { parseListText } from "@/lib/textParser";
+import { saveLista, getListaAtiva } from "@/lib/supabaseService";
+import { useEffect, useState } from "react";
 
 export default function Home() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    // Verificar se há uma lista ativa ao carregar
+    checkActiveList();
+  }, []);
+
+  const checkActiveList = async () => {
+    try {
+      const activeList = await getListaAtiva();
+      if (activeList) {
+        // Há uma lista ativa, perguntar se quer continuar
+        const continueList = confirm(`Você tem uma lista em andamento: "${activeList.lista.nome}". Deseja continuar?`);
+        if (continueList) {
+          // Carregar lista no localStorage e navegar
+          const listData = {
+            id: activeList.lista.id,
+            nome: activeList.lista.nome,
+            items: activeList.itens.map(item => ({
+              pos: item.pos,
+              codigo: item.codigo,
+              descricao: item.descricao,
+              quantidade: item.quantidade,
+              concluido: item.concluido
+            })),
+            startTime: new Date(activeList.lista.data_inicio).getTime(),
+            tempoTotal: activeList.lista.tempo_total
+          };
+          
+          localStorage.setItem('currentList', JSON.stringify(listData));
+          navigate('/list');
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar lista ativa:', error);
+    }
+  };
 
   const handleScanList = async () => {
+    if (isProcessing) return;
+    
     try {
-      // Request camera permission and take photo
-      const photo = await CapacitorCamera.getPhoto({
-        quality: 90,
-        allowEditing: false,
-        resultType: CameraResultType.Uri,
-        source: CameraSource.Camera
-      });
+      setIsProcessing(true);
+      
+      // For mobile: use native camera
+      if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+        const photo = await CapacitorCamera.getPhoto({
+          quality: 90,
+          allowEditing: false,
+          resultType: CameraResultType.DataUrl,
+          source: CameraSource.Camera
+        });
 
-      // For now, show a message that OCR functionality needs to be implemented
-      // In a real mobile app, you would use ML Kit or similar for OCR
-      toast({
-        title: "Foto capturada",
-        description: "Funcionalidade de OCR será implementada para dispositivos móveis",
-      });
+        if (photo.dataUrl) {
+          // Convert data URL to blob for OCR processing
+          const response = await fetch(photo.dataUrl);
+          const blob = await response.blob();
+          
+          toast({
+            title: "Processando imagem...",
+            description: "Extraindo texto da foto capturada",
+          });
 
+          const items = await processImageAndExtractItems(blob);
+          
+          // Save to Supabase
+          const lista = await saveLista(`Lista Escaneada ${new Date().toLocaleDateString()}`, items);
+          
+          // Store locally and navigate
+          localStorage.setItem('currentList', JSON.stringify({
+            id: lista.id,
+            nome: lista.nome,
+            items,
+            startTime: Date.now(),
+            tempoTotal: 0
+          }));
+          
+          navigate('/list');
+        }
+      } else {
+        // For web: use file input to simulate camera
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.capture = 'camera';
+        
+        input.onchange = async (event) => {
+          const file = (event.target as HTMLInputElement).files?.[0];
+          if (!file) {
+            setIsProcessing(false);
+            return;
+          }
+
+          try {
+            toast({
+              title: "Processando imagem...",
+              description: "Extraindo texto da imagem selecionada",
+            });
+
+            const items = await processImageAndExtractItems(file);
+            
+            // Save to Supabase
+            const lista = await saveLista(`Lista Escaneada ${new Date().toLocaleDateString()}`, items);
+            
+            // Store locally and navigate
+            localStorage.setItem('currentList', JSON.stringify({
+              id: lista.id,
+              nome: lista.nome,
+              items,
+              startTime: Date.now(),
+              tempoTotal: 0
+            }));
+            
+            navigate('/list');
+          } catch (error) {
+            console.error('Error processing image:', error);
+            toast({
+              title: "Erro no OCR",
+              description: error instanceof Error ? error.message : "Não foi possível processar a imagem",
+              variant: "destructive"
+            });
+          } finally {
+            setIsProcessing(false);
+          }
+        };
+        
+        input.click();
+      }
     } catch (error) {
-      console.error('Error taking photo:', error);
+      console.error('Error with camera:', error);
       toast({
         title: "Erro",
         description: "Não foi possível acessar a câmera",
         variant: "destructive"
       });
+    } finally {
+      if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -61,11 +177,16 @@ export default function Home() {
           return;
         }
 
+        // Save to Supabase
+        const lista = await saveLista(file.name, items);
+
         // Store the parsed items and navigate to list view
         localStorage.setItem('currentList', JSON.stringify({
+          id: lista.id,
           nome: file.name,
           items,
-          startTime: Date.now()
+          startTime: Date.now(),
+          tempoTotal: 0
         }));
         
         navigate('/list');
@@ -112,12 +233,19 @@ export default function Home() {
                 onClick={handleScanList}
                 className="w-full h-auto p-6 flex flex-col items-center gap-4"
                 variant="outline"
+                disabled={isProcessing}
               >
-                <Camera className="h-12 w-12 text-primary" />
+                {isProcessing ? (
+                  <Loader2 className="h-12 w-12 text-primary animate-spin" />
+                ) : (
+                  <Camera className="h-12 w-12 text-primary" />
+                )}
                 <div className="text-center">
-                  <div className="font-semibold text-lg">Importar TXT Manualmente</div>
+                  <div className="font-semibold text-lg">
+                    {isProcessing ? "Processando..." : "Escanear Lista"}
+                  </div>
                   <div className="text-sm text-muted-foreground mt-1">
-                    Abrir câmera para escanear lista impressa
+                    {isProcessing ? "Extraindo texto da imagem" : "Abrir câmera para escanear lista impressa"}
                   </div>
                 </div>
               </Button>
