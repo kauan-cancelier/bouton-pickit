@@ -1,4 +1,4 @@
-import { Camera, FileText, Loader2 } from "lucide-react";
+import { Camera, FileText, Loader2, History, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
@@ -264,6 +264,48 @@ export default function Home() {
                   <div className="font-semibold text-lg">Importar TXT</div>
                   <div className="text-sm text-muted-foreground mt-1">
                     Selecionar arquivo de texto
+                  </div>
+                </div>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="mt-8 space-y-3">
+          <Card className="cursor-pointer hover:shadow-md transition-shadow">
+            <CardContent className="p-4">
+              <Button 
+                onClick={() => navigate('/history')}
+                className="w-full h-auto p-4 flex items-center justify-between"
+                variant="ghost"
+              >
+                <div className="flex items-center gap-3">
+                  <History className="h-5 w-5 text-muted-foreground" />
+                  <div className="text-left">
+                    <div className="font-medium text-sm">Histórico de Listas</div>
+                    <div className="text-xs text-muted-foreground">
+                      Ver listas anteriores
+                    </div>
+                  </div>
+                </div>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-md transition-shadow">
+            <CardContent className="p-4">
+              <Button 
+                onClick={() => navigate('/settings')}
+                className="w-full h-auto p-4 flex items-center justify-between"
+                variant="ghost"
+              >
+                <div className="flex items-center gap-3">
+                  <Settings className="h-5 w-5 text-muted-foreground" />
+                  <div className="text-left">
+                    <div className="font-medium text-sm">Configurações</div>
+                    <div className="text-xs text-muted-foreground">
+                      Ajustes e preferências
+                    </div>
                   </div>
                 </div>
               </Button>
