@@ -86,9 +86,20 @@ export default function Home() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-foreground mb-2">
-            List Scanner Buddy
-          </h1>
+          <div className="mb-4">
+            <div className="w-16 h-16 bg-primary rounded-lg mx-auto mb-4 flex items-center justify-center">
+              <span className="text-2xl font-bold text-primary-foreground">B</span>
+            </div>
+            <h1 className="text-3xl font-bold text-foreground mb-1">
+              Bouton
+            </h1>
+            <p className="text-sm font-medium text-muted-foreground mb-2">
+              Roupas de Cama Premium
+            </p>
+          </div>
+          <h2 className="text-xl font-semibold text-foreground mb-2">
+            Scanner de Listas
+          </h2>
           <p className="text-muted-foreground">
             Escaneie ou importe sua lista para começar
           </p>
@@ -104,9 +115,9 @@ export default function Home() {
               >
                 <Camera className="h-12 w-12 text-primary" />
                 <div className="text-center">
-                  <div className="font-semibold text-lg">Escanear Lista</div>
+                  <div className="font-semibold text-lg">Importar TXT Manualmente</div>
                   <div className="text-sm text-muted-foreground mt-1">
-                    Abrir câmera para capturar foto
+                    Abrir câmera para escanear lista impressa
                   </div>
                 </div>
               </Button>

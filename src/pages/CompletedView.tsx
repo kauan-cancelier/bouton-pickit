@@ -37,9 +37,17 @@ export default function CompletedView() {
         <CardContent className="p-8 text-center">
           <div className="mb-6">
             <CheckCircle className="h-20 w-20 text-success mx-auto mb-4" />
+            <div className="mb-4">
+              <div className="w-16 h-16 bg-success rounded-lg mx-auto mb-4 flex items-center justify-center">
+                <span className="text-2xl font-bold text-success-foreground">B</span>
+              </div>
+            </div>
             <h1 className="text-2xl font-bold text-foreground mb-2">
               ✅ Lista concluída!
             </h1>
+            <p className="text-muted-foreground mb-4">
+              Bouton - Roupas de Cama
+            </p>
           </div>
 
           <div className="space-y-4 mb-8">
