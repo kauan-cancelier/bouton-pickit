@@ -28,13 +28,7 @@ export default function History() {
   const loadHistory = async () => {
     try {
       // Get user ID (using same logic as supabaseService)
-      let userId: string;
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        userId = user?.id || localStorage.getItem('temp_user_id') || 'temp-' + Math.random().toString(36).substr(2, 9);
-      } catch {
-        userId = localStorage.getItem('temp_user_id') || 'temp-' + Math.random().toString(36).substr(2, 9);
-      }
+      const userId = '550e8400-e29b-41d4-a716-446655440000';
 
       const { data, error } = await supabase
         .from('listas')

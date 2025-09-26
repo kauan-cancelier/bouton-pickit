@@ -1,6 +1,4 @@
 import { Camera, FileText, Loader2, History, Settings } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
@@ -8,6 +6,8 @@ import { processImageAndExtractItems } from "@/lib/ocrService";
 import { parseListText } from "@/lib/textParser";
 import { saveLista, getListaAtiva } from "@/lib/supabaseService";
 import { useEffect, useState } from "react";
+import { ActionCard } from "@/components/ActionCard";
+import { BrandHeader } from "@/components/BrandHeader";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -190,6 +190,11 @@ export default function Home() {
         }));
         
         navigate('/list');
+        
+        toast({
+          title: "Lista importada!",
+          description: `${items.length} itens encontrados`,
+        });
       };
       
       input.click();
@@ -206,111 +211,42 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
-        <div className="text-center mb-8">
-          <div className="mb-4">
-            <div className="w-16 h-16 bg-primary rounded-lg mx-auto mb-4 flex items-center justify-center">
-              <span className="text-2xl font-bold text-primary-foreground">B</span>
-            </div>
-            <h1 className="text-3xl font-bold text-foreground mb-1">
-              Bouton
-            </h1>
-            <p className="text-sm font-medium text-muted-foreground mb-2">
-              Roupas de Cama Premium
-            </p>
-          </div>
-          <h2 className="text-xl font-semibold text-foreground mb-2">
-            Scanner de Listas
-          </h2>
-          <p className="text-muted-foreground">
-            Escaneie ou importe sua lista para começar
-          </p>
-        </div>
+        <BrandHeader />
 
         <div className="space-y-4">
-          <Card className="cursor-pointer hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <Button 
-                onClick={handleScanList}
-                className="w-full h-auto p-6 flex flex-col items-center gap-4"
-                variant="outline"
-                disabled={isProcessing}
-              >
-                {isProcessing ? (
-                  <Loader2 className="h-12 w-12 text-primary animate-spin" />
-                ) : (
-                  <Camera className="h-12 w-12 text-primary" />
-                )}
-                <div className="text-center">
-                  <div className="font-semibold text-lg">
-                    {isProcessing ? "Processando..." : "Escanear Lista"}
-                  </div>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    {isProcessing ? "Extraindo texto da imagem" : "Abrir câmera para escanear lista impressa"}
-                  </div>
-                </div>
-              </Button>
-            </CardContent>
-          </Card>
+          <ActionCard
+            icon={<Camera className="h-12 w-12 text-primary" />}
+            title="Escanear Lista"
+            description="Abrir câmera para escanear lista impressa"
+            onClick={handleScanList}
+            disabled={isProcessing}
+            loading={isProcessing}
+          />
 
-          <Card className="cursor-pointer hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <Button 
-                onClick={handleImportTxt}
-                className="w-full h-auto p-6 flex flex-col items-center gap-4"
-                variant="outline"
-              >
-                <FileText className="h-12 w-12 text-primary" />
-                <div className="text-center">
-                  <div className="font-semibold text-lg">Importar TXT</div>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    Selecionar arquivo de texto
-                  </div>
-                </div>
-              </Button>
-            </CardContent>
-          </Card>
+          <ActionCard
+            icon={<FileText className="h-12 w-12 text-primary" />}
+            title="Importar TXT"
+            description="Selecionar arquivo de texto"
+            onClick={handleImportTxt}
+          />
         </div>
 
         <div className="mt-8 space-y-3">
-          <Card className="cursor-pointer hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <Button 
-                onClick={() => navigate('/history')}
-                className="w-full h-auto p-4 flex items-center justify-between"
-                variant="ghost"
-              >
-                <div className="flex items-center gap-3">
-                  <History className="h-5 w-5 text-muted-foreground" />
-                  <div className="text-left">
-                    <div className="font-medium text-sm">Histórico de Listas</div>
-                    <div className="text-xs text-muted-foreground">
-                      Ver listas anteriores
-                    </div>
-                  </div>
-                </div>
-              </Button>
-            </CardContent>
-          </Card>
+          <ActionCard
+            icon={<History className="h-5 w-5 text-muted-foreground" />}
+            title="Histórico de Listas"
+            description="Ver listas anteriores"
+            onClick={() => navigate('/history')}
+            variant="secondary"
+          />
 
-          <Card className="cursor-pointer hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <Button 
-                onClick={() => navigate('/settings')}
-                className="w-full h-auto p-4 flex items-center justify-between"
-                variant="ghost"
-              >
-                <div className="flex items-center gap-3">
-                  <Settings className="h-5 w-5 text-muted-foreground" />
-                  <div className="text-left">
-                    <div className="font-medium text-sm">Configurações</div>
-                    <div className="text-xs text-muted-foreground">
-                      Ajustes e preferências
-                    </div>
-                  </div>
-                </div>
-              </Button>
-            </CardContent>
-          </Card>
+          <ActionCard
+            icon={<Settings className="h-5 w-5 text-muted-foreground" />}
+            title="Configurações"
+            description="Ajustes e preferências"
+            onClick={() => navigate('/settings')}
+            variant="secondary"
+          />
         </div>
       </div>
     </div>

@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ParsedItem } from './textParser';
 
 // Helper function to handle cases where user might not be authenticated
-// For local testing, we'll create a fallback approach
+// For local testing, we'll use a fixed UUID for demo purposes
 async function getCurrentUserId(): Promise<string> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -10,16 +10,11 @@ async function getCurrentUserId(): Promise<string> {
       return user.id;
     }
   } catch (error) {
-    console.warn('Auth not available, using localStorage fallback');
+    console.warn('Auth not available, using demo user fallback');
   }
   
-  // Fallback for local development - use a temporary user ID
-  let tempUserId = localStorage.getItem('temp_user_id');
-  if (!tempUserId) {
-    tempUserId = 'temp-' + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem('temp_user_id', tempUserId);
-  }
-  return tempUserId;
+  // Fallback for local development - use a fixed UUID for demo
+  return '550e8400-e29b-41d4-a716-446655440000';
 }
 
 export interface Lista {
