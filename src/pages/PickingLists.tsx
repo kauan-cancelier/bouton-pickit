@@ -4,7 +4,6 @@ import { ArrowLeft, Clock, Package, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatTime } from "@/lib/textParser";
 
@@ -19,6 +18,25 @@ interface Lista {
   total_items?: number;
 }
 
+interface Item {
+  id: string;
+  lista_id: string;
+  pos: number;
+  codigo: string;
+  descricao: string;
+  quantidade: number;
+  concluido: boolean;
+}
+
+function getData<T>(key: string): T[] {
+  const raw = localStorage.getItem(key);
+  return raw ? JSON.parse(raw) : [];
+}
+
+function setData<T>(key: string, data: T[]) {
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
 export default function PickingLists() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -31,32 +49,21 @@ export default function PickingLists() {
 
   const loadLists = async () => {
     try {
-      const { data: listasData, error } = await supabase
-        .from('listas')
-        .select('*')
-        .in('status', ['pendente', 'em_andamento'])
-        .order('created_at', { ascending: false });
+      const listasData = getData<Lista>("listas")
+        .filter(l => ["pendente", "em_andamento"].includes(l.status))
+        .sort((a, b) => b.created_at.localeCompare(a.created_at));
 
-      if (error) throw error;
-
-      // Get item count for each list
-      const listasWithItems = await Promise.all(
-        (listasData || []).map(async (lista) => {
-          const { count } = await supabase
-            .from('itens')
-            .select('*', { count: 'exact', head: true })
-            .eq('lista_id', lista.id);
-          
-          return {
-            ...lista,
-            total_items: count || 0
-          };
-        })
-      );
+      const listasWithItems = listasData.map(lista => {
+        const itens = getData<Item>("itens").filter(i => i.lista_id === lista.id);
+        return {
+          ...lista,
+          total_items: itens.length
+        };
+      });
 
       setListas(listasWithItems);
     } catch (error) {
-      console.error('Erro ao carregar listas:', error);
+      console.error("Erro ao carregar listas:", error);
     } finally {
       setLoading(false);
     }
@@ -64,32 +71,24 @@ export default function PickingLists() {
 
   const handleStartPicking = async (lista: Lista) => {
     try {
-      // Update list status to 'em_andamento' and assign to current user
-      const { error } = await supabase
-        .from('listas')
-        .update({ 
-          status: 'em_andamento',
-          user_codigo: user?.codigo,
-          data_inicio: new Date().toISOString()
-        })
-        .eq('id', lista.id);
+      const listasData = getData<Lista>("listas");
+      const idx = listasData.findIndex(l => l.id === lista.id);
+      if (idx !== -1) {
+        listasData[idx] = {
+          ...listasData[idx],
+          status: "em_andamento",
+          user_codigo: user?.codigo || null,
+          data_inicio: new Date().toISOString(),
+        };
+        setData("listas", listasData);
+      }
 
-      if (error) throw error;
+      const itens = getData<Item>("itens").filter(i => i.lista_id === lista.id);
 
-      // Get items for this list
-      const { data: itens, error: itensError } = await supabase
-        .from('itens')
-        .select('*')
-        .eq('lista_id', lista.id)
-        .order('pos');
-
-      if (itensError) throw itensError;
-
-      // Store in localStorage and navigate
       const listData = {
         id: lista.id,
         nome: lista.nome,
-        items: (itens || []).map(item => ({
+        items: itens.map(item => ({
           pos: item.pos,
           codigo: item.codigo,
           descricao: item.descricao,
@@ -100,29 +99,21 @@ export default function PickingLists() {
         tempoTotal: lista.tempo_total || 0
       };
 
-      localStorage.setItem('currentList', JSON.stringify(listData));
-      navigate('/list');
+      localStorage.setItem("currentList", JSON.stringify(listData));
+      navigate("/list");
     } catch (error) {
-      console.error('Erro ao iniciar picking:', error);
+      console.error("Erro ao iniciar picking:", error);
     }
   };
 
   const handleContinuePicking = async (lista: Lista) => {
     try {
-      // Get items for this list
-      const { data: itens, error } = await supabase
-        .from('itens')
-        .select('*')
-        .eq('lista_id', lista.id)
-        .order('pos');
+      const itens = getData<Item>("itens").filter(i => i.lista_id === lista.id);
 
-      if (error) throw error;
-
-      // Store in localStorage and navigate
       const listData = {
         id: lista.id,
         nome: lista.nome,
-        items: (itens || []).map(item => ({
+        items: itens.map(item => ({
           pos: item.pos,
           codigo: item.codigo,
           descricao: item.descricao,
@@ -133,10 +124,10 @@ export default function PickingLists() {
         tempoTotal: lista.tempo_total || 0
       };
 
-      localStorage.setItem('currentList', JSON.stringify(listData));
-      navigate('/list');
+      localStorage.setItem("currentList", JSON.stringify(listData));
+      navigate("/list");
     } catch (error) {
-      console.error('Erro ao continuar picking:', error);
+      console.error("Erro ao continuar picking:", error);
     }
   };
 
@@ -150,8 +141,8 @@ export default function PickingLists() {
     );
   }
 
-  const listasPendentes = listas.filter(l => l.status === 'pendente');
-  const listasAndamento = listas.filter(l => l.status === 'em_andamento');
+  const listasPendentes = listas.filter(l => l.status === "pendente");
+  const listasAndamento = listas.filter(l => l.status === "em_andamento");
 
   return (
     <div className="min-h-screen bg-background">
@@ -160,7 +151,7 @@ export default function PickingLists() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate("/dashboard")}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -194,12 +185,12 @@ export default function PickingLists() {
                           {lista.total_items} itens • Usuário: {lista.user_codigo}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Iniciado: {new Date(lista.data_inicio).toLocaleDateString('pt-BR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
+                          Iniciado: {new Date(lista.data_inicio).toLocaleDateString("pt-BR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit"
                           })}
                         </p>
                       </div>
@@ -212,14 +203,14 @@ export default function PickingLists() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Clock className="h-4 w-4" />
-                        {lista.tempo_total > 0 ? formatTime(lista.tempo_total) : 'Não iniciado'}
+                        {lista.tempo_total > 0 ? formatTime(lista.tempo_total) : "Não iniciado"}
                       </div>
                       <Button
                         size="sm"
                         onClick={() => handleContinuePicking(lista)}
                         disabled={lista.user_codigo !== user?.codigo}
                       >
-                        {lista.user_codigo === user?.codigo ? 'Continuar' : 'Em uso'}
+                        {lista.user_codigo === user?.codigo ? "Continuar" : "Em uso"}
                       </Button>
                     </div>
                   </CardContent>
@@ -244,7 +235,7 @@ export default function PickingLists() {
               <p className="text-muted-foreground mb-4">
                 Todas as listas disponíveis estão sendo processadas ou foram concluídas.
               </p>
-              <Button onClick={() => navigate('/dashboard')}>
+              <Button onClick={() => navigate("/dashboard")}>
                 Voltar ao Dashboard
               </Button>
             </Card>
@@ -260,12 +251,12 @@ export default function PickingLists() {
                           {lista.total_items} itens
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Criado: {new Date(lista.created_at).toLocaleDateString('pt-BR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
+                          Criado: {new Date(lista.created_at).toLocaleDateString("pt-BR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit"
                           })}
                         </p>
                       </div>
@@ -294,3 +285,4 @@ export default function PickingLists() {
     </div>
   );
 }
+

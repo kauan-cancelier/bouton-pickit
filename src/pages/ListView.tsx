@@ -5,13 +5,12 @@ import { ProgressHeader } from "@/components/ProgressHeader";
 import { ParsedItem } from "@/lib/textParser";
 import { useTimer } from "@/hooks/useTimer";
 import { useToast } from "@/hooks/use-toast";
-import { updateItemStatus, updateListaTempoTotal, completeLista } from "@/lib/supabaseService";
+import { localStorageService } from "@/lib/localStorageService";
 
 interface ListData {
   id?: string;
   nome: string;
   items: ParsedItem[];
-  startTime: number;
   tempoTotal?: number;
 }
 
@@ -20,10 +19,9 @@ export default function ListView() {
   const [items, setItems] = useState<ParsedItem[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { time, start } = useTimer(0);
 
+  // Carrega lista e inicializa timer com persistência
   useEffect(() => {
-    // Load list data from localStorage
     const stored = localStorage.getItem('currentList');
     if (!stored) {
       navigate('/');
@@ -33,78 +31,65 @@ export default function ListView() {
     const data: ListData = JSON.parse(stored);
     setListData(data);
     setItems(data.items);
-    
-    // Start the timer from stored time
-    start();
-  }, [navigate, start]);
+  }, [navigate]);
 
-  // Auto-save timer every 10 seconds
+  const { time, start } = useTimer(
+    listData?.tempoTotal || 0,
+    listData ? `timer-${listData.id}` : undefined
+  );
+
+  // Inicia o timer quando listData estiver disponível
   useEffect(() => {
-    if (!listData?.id) return;
-
-    const interval = setInterval(() => {
-      updateListaTempoTotal(listData.id!, time).catch(console.error);
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [listData?.id, time]);
+    if (listData) start();
+  }, [listData, start]);
 
   const completedCount = items.filter(item => item.concluido).length;
   const totalCount = items.length;
 
-  const handleToggleItem = async (pos: number) => {
+  const handleToggleItem = (pos: number) => {
     setItems(prevItems => {
       const newItems = prevItems.map(item => 
         item.pos === pos ? { ...item, concluido: !item.concluido } : item
       );
-      
-      // Update localStorage
+
+      // Atualiza localStorage
       if (listData) {
-        const updatedData = { ...listData, items: newItems };
+        const updatedData = { ...listData, items: newItems, tempoTotal: time };
         localStorage.setItem('currentList', JSON.stringify(updatedData));
+
+        // Atualiza lista completa no storageService
+        localStorageService.updateListaTempoTotal(listData.id!, time);
       }
 
-      // Update Supabase
-      if (listData?.id) {
-        const toggledItem = newItems.find(item => item.pos === pos);
-        if (toggledItem) {
-          updateItemStatus(listData.id, pos, toggledItem.concluido).catch(console.error);
-        }
-      }
-      
-      // Check if all items are completed
+      // Verifica conclusão
       const newCompletedCount = newItems.filter(item => item.concluido).length;
-      if (newCompletedCount === newItems.length && newItems.length > 0) {
-        // Save final time and mark as completed
-        if (listData?.id) {
-          Promise.all([
-            updateListaTempoTotal(listData.id, time),
-            completeLista(listData.id)
-          ]).catch(console.error);
-        }
+      if (newCompletedCount === newItems.length && newItems.length > 0 && listData) {
+        const updatedData = { ...listData, items: newItems, tempoTotal: time, concluida: true };
+        localStorage.setItem('currentList', JSON.stringify(updatedData));
+        localStorageService.completeLista(listData.id!);
 
-        // All items completed, navigate to completion screen
+        // Redireciona para tela de conclusão
         setTimeout(() => {
           navigate('/completed', { 
             state: { 
               totalTime: time,
               totalItems: newItems.length,
-              listName: listData?.nome
+              listName: listData.nome
             } 
           });
         }, 500);
       }
-      
+
       return newItems;
     });
   };
 
   if (!listData) {
-    return <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center">
-        <div className="text-lg">Carregando lista...</div>
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center text-lg">Carregando lista...</div>
       </div>
-    </div>;
+    );
   }
 
   return (
@@ -114,7 +99,6 @@ export default function ListView() {
         total={totalCount}
         time={time}
       />
-      
       <div className="p-4">
         {items.map(item => (
           <ListItem

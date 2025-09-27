@@ -1,10 +1,10 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Clock, CheckCircle, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 import { formatTime } from "@/lib/textParser";
 
 interface Lista {
@@ -25,69 +25,52 @@ export default function History() {
     loadHistory();
   }, []);
 
-  const loadHistory = async () => {
+  const loadHistory = () => {
     try {
-      // Get user ID (using same logic as supabaseService)
-      const userId = '550e8400-e29b-41d4-a716-446655440000';
+      const storedListas = localStorage.getItem("listas");
+      const parsedListas: Lista[] = storedListas ? JSON.parse(storedListas) : [];
 
-      const { data, error } = await supabase
-        .from('listas')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+      // pega só as concluídas
+      const concluidas = parsedListas.filter((l) => l.concluida);
 
-      if (error) throw error;
-      setListas(data || []);
+      // ordena por data de criação decrescente
+      concluidas.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      setListas(concluidas);
     } catch (error) {
-      console.error('Erro ao carregar histórico:', error);
+      console.error("Erro ao carregar histórico:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleContinueList = async (lista: Lista) => {
+  const handleContinueList = (lista: Lista) => {
     try {
-      // Get items for this list
-      const { data: itens, error } = await supabase
-        .from('itens')
-        .select('*')
-        .eq('lista_id', lista.id)
-        .order('pos');
+      const storedItens = localStorage.getItem(`itens_${lista.id}`);
+      const itens = storedItens ? JSON.parse(storedItens) : [];
 
-      if (error) throw error;
-
-      // Store in localStorage and navigate
       const listData = {
         id: lista.id,
         nome: lista.nome,
-        items: (itens || []).map(item => ({
-          pos: item.pos,
-          codigo: item.codigo,
-          descricao: item.descricao,
-          quantidade: item.quantidade,
-          concluido: item.concluido
-        })),
+        items: itens,
         startTime: new Date(lista.data_inicio).getTime(),
-        tempoTotal: lista.tempo_total
+        tempoTotal: lista.tempo_total,
       };
 
-      localStorage.setItem('currentList', JSON.stringify(listData));
-      
-      if (lista.concluida) {
-        // If completed, go to completed view
-        navigate('/completed', {
-          state: {
-            totalTime: lista.tempo_total,
-            totalItems: itens?.length || 0,
-            listName: lista.nome
-          }
-        });
-      } else {
-        // If not completed, go to list view
-        navigate('/list');
-      }
+      localStorage.setItem("currentList", JSON.stringify(listData));
+
+      // todas aqui são concluídas → vai sempre pro /completed
+      navigate("/completed", {
+        state: {
+          totalTime: lista.tempo_total,
+          totalItems: itens?.length || 0,
+          listName: lista.nome,
+        },
+      });
     } catch (error) {
-      console.error('Erro ao carregar lista:', error);
+      console.error("Erro ao carregar lista:", error);
     }
   };
 
@@ -105,16 +88,12 @@ export default function History() {
     <div className="min-h-screen bg-background">
       <div className="bg-background border-b border-border p-4 sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/')}
-          >
+          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
             <h1 className="text-lg font-semibold text-foreground">
-              Histórico de Listas
+              Histórico de Listas Concluídas
             </h1>
             <p className="text-sm text-muted-foreground">
               Bouton - Roupas de Cama
@@ -128,42 +107,37 @@ export default function History() {
           <Card className="text-center p-8">
             <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h2 className="text-lg font-semibold text-foreground mb-2">
-              Nenhuma lista encontrada
+              Nenhuma lista concluída
             </h2>
             <p className="text-muted-foreground mb-4">
-              Você ainda não criou nenhuma lista. Comece escaneando ou importando uma lista.
+              Finalize uma lista para que ela apareça aqui.
             </p>
-            <Button onClick={() => navigate('/')}>
-              Criar primeira lista
-            </Button>
+            <Button onClick={() => navigate("/")}>Criar nova lista</Button>
           </Card>
         ) : (
           <div className="space-y-4">
             {listas.map((lista) => (
-              <Card key={lista.id} className="cursor-pointer hover:shadow-md transition-shadow">
+              <Card
+                key={lista.id}
+                className="cursor-pointer hover:shadow-md transition-shadow"
+              >
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="text-base">{lista.nome}</CardTitle>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {new Date(lista.created_at).toLocaleDateString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
+                        {new Date(lista.created_at).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
                         })}
                       </p>
                     </div>
-                    <Badge variant={lista.concluida ? "default" : "secondary"}>
-                      {lista.concluida ? (
-                        <>
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Concluída
-                        </>
-                      ) : (
-                        'Em andamento'
-                      )}
+                    <Badge variant="default">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Concluída
                     </Badge>
                   </div>
                 </CardHeader>
@@ -171,13 +145,12 @@ export default function History() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Clock className="h-4 w-4" />
-                      {lista.tempo_total > 0 ? formatTime(lista.tempo_total) : 'Não iniciada'}
+                      {lista.tempo_total > 0
+                        ? formatTime(lista.tempo_total)
+                        : "Não iniciada"}
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={() => handleContinueList(lista)}
-                    >
-                      {lista.concluida ? 'Ver detalhes' : 'Continuar'}
+                    <Button size="sm" onClick={() => handleContinueList(lista)}>
+                      Ver detalhes
                     </Button>
                   </div>
                 </CardContent>

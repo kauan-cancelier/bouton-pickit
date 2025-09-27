@@ -1,19 +1,22 @@
-import { supabase } from '@/integrations/supabase/client';
 import { ParsedItem } from './textParser';
 
-// Helper function to handle cases where user might not be authenticated
-// For local testing, we'll use a fixed UUID for demo purposes
+// Gerar IDs simples
+function generateId() {
+  return crypto.randomUUID();
+}
+
+// Função utilitária para ler/gravar no localStorage
+function getData<T>(key: string): T[] {
+  const raw = localStorage.getItem(key);
+  return raw ? JSON.parse(raw) : [];
+}
+
+function setData<T>(key: string, data: T[]) {
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
+// Simula usuário logado (sempre o mesmo em local)
 async function getCurrentUserId(): Promise<string> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      return user.id;
-    }
-  } catch (error) {
-    console.warn('Auth not available, using demo user fallback');
-  }
-  
-  // Fallback for local development - use a fixed UUID for demo
   return '550e8400-e29b-41d4-a716-446655440000';
 }
 
@@ -23,6 +26,8 @@ export interface Lista {
   data_inicio: string;
   tempo_total: number;
   concluida: boolean;
+  status: string;
+  user_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -37,128 +42,87 @@ export interface ItemLista {
   concluido: boolean;
 }
 
-export async function saveLista(nome: string, items: ParsedItem[], tempoTotal: number = 0) {
-  try {
-    const userId = await getCurrentUserId();
+// Salvar nova lista e itens
+export async function saveLista(nome: string, items: ParsedItem[], tempoTotal: number = 0): Promise<Lista> {
+  const userId = await getCurrentUserId();
+  const listas = getData<Lista>('listas');
 
-    // Inserir lista
-    const { data: lista, error: listaError } = await supabase
-      .from('listas')
-      .insert({
-        nome,
-        data_inicio: new Date().toISOString(),
-        tempo_total: tempoTotal,
-        concluida: false,
-        status: 'pendente',
-        user_id: userId
-      })
-      .select()
-      .single();
+  const novaLista: Lista = {
+    id: generateId(),
+    nome,
+    data_inicio: new Date().toISOString(),
+    tempo_total: tempoTotal,
+    concluida: false,
+    status: 'pendente',
+    user_id: userId,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
 
-    if (listaError) throw listaError;
+  listas.push(novaLista);
+  setData('listas', listas);
 
-    // Inserir itens
-    const itemsToInsert = items.map(item => ({
-      lista_id: lista.id,
-      pos: item.pos,
-      codigo: item.codigo,
-      descricao: item.descricao,
-      quantidade: item.quantidade,
-      concluido: item.concluido
-    }));
+  const itens = getData<ItemLista>('itens');
+  const novosItens = items.map(item => ({
+    id: generateId(),
+    lista_id: novaLista.id,
+    pos: item.pos,
+    codigo: item.codigo,
+    descricao: item.descricao,
+    quantidade: item.quantidade,
+    concluido: item.concluido,
+  }));
 
-    const { error: itensError } = await supabase
-      .from('itens')
-      .insert(itemsToInsert);
+  setData('itens', [...itens, ...novosItens]);
 
-    if (itensError) throw itensError;
-
-    return lista;
-  } catch (error) {
-    console.error('Erro ao salvar lista:', error);
-    throw error;
-  }
+  return novaLista;
 }
 
+// Atualizar status de item
 export async function updateItemStatus(listaId: string, pos: number, concluido: boolean) {
-  try {
-    const { error } = await supabase
-      .from('itens')
-      .update({ concluido })
-      .match({ lista_id: listaId, pos });
-
-    if (error) throw error;
-  } catch (error) {
-    console.error('Erro ao atualizar item:', error);
-    throw error;
+  const itens = getData<ItemLista>('itens');
+  const idx = itens.findIndex(i => i.lista_id === listaId && i.pos === pos);
+  if (idx !== -1) {
+    itens[idx].concluido = concluido;
+    setData('itens', itens);
   }
 }
 
+// Atualizar tempo total da lista
 export async function updateListaTempoTotal(listaId: string, tempoTotal: number) {
-  try {
-    const { error } = await supabase
-      .from('listas')
-      .update({ tempo_total: tempoTotal })
-      .eq('id', listaId);
-
-    if (error) throw error;
-  } catch (error) {
-    console.error('Erro ao atualizar tempo:', error);
-    throw error;
+  const listas = getData<Lista>('listas');
+  const idx = listas.findIndex(l => l.id === listaId);
+  if (idx !== -1) {
+    listas[idx].tempo_total = tempoTotal;
+    listas[idx].updated_at = new Date().toISOString();
+    setData('listas', listas);
   }
 }
 
+// Completar lista
 export async function completeLista(listaId: string) {
-  try {
-    const { error } = await supabase
-      .from('listas')
-      .update({ 
-        concluida: true,
-        status: 'concluida'
-      })
-      .eq('id', listaId);
-
-    if (error) throw error;
-  } catch (error) {
-    console.error('Erro ao completar lista:', error);
-    throw error;
+  const listas = getData<Lista>('listas');
+  const idx = listas.findIndex(l => l.id === listaId);
+  if (idx !== -1) {
+    listas[idx].concluida = true;
+    listas[idx].status = 'concluida';
+    listas[idx].updated_at = new Date().toISOString();
+    setData('listas', listas);
   }
 }
 
+// Buscar lista ativa
 export async function getListaAtiva() {
-  try {
-    const userId = await getCurrentUserId();
+  const userId = await getCurrentUserId();
+  const listas = getData<Lista>('listas')
+    .filter(l => l.user_id === userId && l.status === 'em_andamento')
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
 
-    const { data: listas, error: listasError } = await supabase
-      .from('listas')
-      .select('*')
-      .eq('status', 'em_andamento')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(1);
+  if (listas.length === 0) return null;
 
-    if (listasError) throw listasError;
+  const lista = listas[0];
+  const itens = getData<ItemLista>('itens').filter(i => i.lista_id === lista.id);
 
-    if (!listas || listas.length === 0) {
-      return null;
-    }
-
-    const lista = listas[0];
-
-    const { data: itens, error: itensError } = await supabase
-      .from('itens')
-      .select('*')
-      .eq('lista_id', lista.id)
-      .order('pos');
-
-    if (itensError) throw itensError;
-
-    return {
-      lista,
-      itens: itens || []
-    };
-  } catch (error) {
-    console.error('Erro ao buscar lista ativa:', error);
-    return null;
-  }
+  return { lista, itens };
 }
+
