@@ -29,13 +29,13 @@ export function parseListText(text: string): ParsedItem[] {
       continue;
     }
     
-    // Parse the line - looking for pattern: POS CODE ... QUANTITY ITEM_NUMBER DESCRIPTION
-    // Regex mais específico para o formato real do arquivo
-    const regex = /^\s*(\d+)\s+([A-Z0-9]+)\s+.*?\s+(\d+,\d+)\s+\d+\s+(.+?)\s+PC\s+/i;
+    // Parse the line - updated regex for the new format
+    // Looking for: POS CODE QUANTITY ITEM_NUMBER DESCRIPTION
+    const regex = /^\s*(\d+)\s+([A-Z0-9]+)\s+(\d+,\d+)\s+(\d+)\s+(.+?)\s+PC\s+/i;
     const match = line.match(regex);
     
     if (match) {
-      const [, posStr, codigo, quantidadeStr, descricaoRaw] = match;
+      const [, posStr, codigo, quantidadeStr, itemNumber, descricaoRaw] = match;
       const pos = parseInt(posStr);
       const quantidade = parseFloat(quantidadeStr.replace(',', '.'));
       

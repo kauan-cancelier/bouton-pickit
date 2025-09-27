@@ -49,6 +49,7 @@ export async function saveLista(nome: string, items: ParsedItem[], tempoTotal: n
         data_inicio: new Date().toISOString(),
         tempo_total: tempoTotal,
         concluida: false,
+        status: 'pendente',
         user_id: userId
       })
       .select()
@@ -111,7 +112,10 @@ export async function completeLista(listaId: string) {
   try {
     const { error } = await supabase
       .from('listas')
-      .update({ concluida: true })
+      .update({ 
+        concluida: true,
+        status: 'concluida'
+      })
       .eq('id', listaId);
 
     if (error) throw error;
@@ -128,7 +132,7 @@ export async function getListaAtiva() {
     const { data: listas, error: listasError } = await supabase
       .from('listas')
       .select('*')
-      .eq('concluida', false)
+      .eq('status', 'em_andamento')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(1);

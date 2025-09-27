@@ -65,8 +65,10 @@ export type Database = {
           data_inicio: string
           id: string
           nome: string
+          status: string | null
           tempo_total: number | null
           updated_at: string
+          user_codigo: string | null
           user_id: string
         }
         Insert: {
@@ -75,8 +77,10 @@ export type Database = {
           data_inicio?: string
           id?: string
           nome: string
+          status?: string | null
           tempo_total?: number | null
           updated_at?: string
+          user_codigo?: string | null
           user_id: string
         }
         Update: {
@@ -85,9 +89,38 @@ export type Database = {
           data_inicio?: string
           id?: string
           nome?: string
+          status?: string | null
           tempo_total?: number | null
           updated_at?: string
+          user_codigo?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      usuarios: {
+        Row: {
+          codigo: string
+          created_at: string
+          id: string
+          nome: string
+          senha: string
+          updated_at: string
+        }
+        Insert: {
+          codigo: string
+          created_at?: string
+          id?: string
+          nome: string
+          senha: string
+          updated_at?: string
+        }
+        Update: {
+          codigo?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          senha?: string
+          updated_at?: string
         }
         Relationships: []
       }
