@@ -58,7 +58,7 @@ export default function Login() {
                 type="text"
                 value={codigo}
                 onChange={(e) => setCodigo(e.target.value)}
-                placeholder="Ex: USR001"
+                placeholder="Ex: admin"
                 required
               />
             </div>
@@ -83,10 +83,11 @@ export default function Login() {
           </form>
           
           <div className="mt-6 p-3 bg-muted rounded-md text-sm text-muted-foreground">
-            <p className="font-medium mb-2">Usuários de teste:</p>
-            <p>• USR001 - Senha: 123456</p>
-            <p>• USR002 - Senha: 654321</p>
-            <p>• USR003 - Senha: admin</p>
+            <p className="font-medium mb-2">Usuários disponíveis:</p>
+            <p>• admin - Senha: 123</p>
+            <p>• picker1 - Senha: 123</p>
+            <p>• picker2 - Senha: 123</p>
+            <p>• picker3 - Senha: 123</p>
           </div>
         </CardContent>
       </Card>
