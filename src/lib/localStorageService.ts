@@ -8,6 +8,8 @@ export interface Lista {
   data_inicio: string;
   tempo_total: number;
   concluida: boolean;
+  status: string;
+  user_codigo?: string;
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +53,7 @@ export const localStorageService = {
       data_inicio: now,
       tempo_total: tempoTotal,
       concluida: false,
+      status: 'pendente',
       created_at: now,
       updated_at: now
     };
@@ -92,7 +95,7 @@ export const localStorageService = {
   completeLista: (listaId: string) => {
     const listas = getData<Lista>(LISTAS_KEY);
     const updated = listas.map(l =>
-      l.id === listaId ? { ...l, concluida: true, updated_at: new Date().toISOString() } : l
+      l.id === listaId ? { ...l, concluida: true, status: 'concluida', updated_at: new Date().toISOString() } : l
     );
     setData(LISTAS_KEY, updated);
   },
@@ -102,7 +105,7 @@ export const localStorageService = {
     const itens = getData<ItemLista>(ITENS_KEY);
 
     const ativa = [...listas]
-      .filter(l => !l.concluida)
+      .filter(l => !l.concluida && l.status === 'em_andamento')
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 
     if (!ativa) return null;

@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { processImageAndExtractItems } from "@/lib/ocrService";
 import { parseListText } from "@/lib/textParser";
 import { localStorageService } from "@/lib/localStorageService";
+import { initializeLocalStorage } from "@/lib/initializeData";
 import { ActionCard } from "@/components/ActionCard";
 import useStats from "@/hooks/useStats";
 
@@ -32,6 +33,10 @@ export default function Dashboard() {
   const [filterDate, setFilterDate] = useState<string>(new Date().toISOString().split("T")[0]);
 
   // --- Funções de importação ---
+  useEffect(() => {
+    initializeLocalStorage();
+  }, []);
+
   const handleScanList = async () => {
     if (isProcessing) return;
     try {
