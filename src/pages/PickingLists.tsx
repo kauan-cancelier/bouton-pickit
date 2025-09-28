@@ -111,7 +111,7 @@ export default function PickingLists() {
           codigo: item.codigo,
           descricao: item.descricao,
           quantidade: item.quantidade,
-          concluido: item.concluido
+          concluido: item.concluido // Usa o estado atual salvo
         })),
         startTime: new Date(lista.data_inicio).getTime(),
         tempoTotal: lista.tempo_total || 0

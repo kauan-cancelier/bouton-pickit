@@ -18,14 +18,14 @@ export default function CompletedView() {
 
   useEffect(() => {
     if (!state) {
-      navigate('/');
+      navigate('/dashboard');
     }
   }, [state, navigate]);
 
   const handleBackHome = () => {
     // Clear current list from localStorage
     localStorage.removeItem('currentList');
-    navigate('/');
+    navigate('/dashboard');
   };
 
   if (!state) {

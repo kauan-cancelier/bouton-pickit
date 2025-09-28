@@ -57,8 +57,9 @@ export default function ListView() {
         const updatedData = { ...listData, items: newItems, tempoTotal: time };
         localStorage.setItem('currentList', JSON.stringify(updatedData));
 
-        // Atualiza lista completa no storageService
+        // Atualiza lista completa no storageService E cada item individualmente
         localStorageService.updateListaTempoTotal(listData.id!, time);
+        localStorageService.updateItemStatus(listData.id!, pos, !prevItems.find(item => item.pos === pos)?.concluido);
       }
 
       // Verifica conclusão
@@ -69,6 +70,11 @@ export default function ListView() {
         localStorageService.completeLista(listData.id!);
 
         // Redireciona para tela de conclusão
+        toast({
+          title: "Lista concluída!",
+          description: `${newItems.length} itens processados em ${Math.floor(time/60)}min`,
+        });
+        
         setTimeout(() => {
           navigate('/completed', { 
             state: { 
@@ -77,7 +83,7 @@ export default function ListView() {
               listName: listData.nome
             } 
           });
-        }, 500);
+        }, 1000);
       }
 
       return newItems;
