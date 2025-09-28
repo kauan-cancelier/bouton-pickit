@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -17,20 +17,10 @@ export default function Settings() {
     
     if (confirm) {
       try {
-        // Clear localStorage
+        // Clear localStorage data
         localStorage.removeItem('currentList');
-        localStorage.removeItem('temp_user_id');
-        
-        // Clear Supabase data if user is authenticated
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await supabase.from('itens').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-            await supabase.from('listas').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-          }
-        } catch (error) {
-          console.warn('Erro ao limpar dados do Supabase:', error);
-        }
+        localStorage.removeItem('listas');
+        localStorage.removeItem('itens');
 
         toast({
           title: "Dados limpos",

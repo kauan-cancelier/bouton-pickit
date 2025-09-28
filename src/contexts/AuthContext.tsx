@@ -30,23 +30,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (codigo: string, senha: string): Promise<boolean> => {
     try {
-      const { supabase } = await import('@/integrations/supabase/client');
-      
-      const { data, error } = await supabase
-        .from('usuarios')
-        .select('*')
-        .eq('codigo', codigo)
-        .eq('senha', senha)
-        .single();
+      // Usuários hardcoded no localStorage para simplicidade
+      const usuarios = [
+        { id: '1', codigo: 'admin', senha: '123', nome: 'Administrador' },
+        { id: '2', codigo: 'picker1', senha: '123', nome: 'Picker 1' },
+        { id: '3', codigo: 'picker2', senha: '123', nome: 'Picker 2' },
+        { id: '4', codigo: 'picker3', senha: '123', nome: 'Picker 3' }
+      ];
 
-      if (error || !data) {
+      const usuario = usuarios.find(u => u.codigo === codigo && u.senha === senha);
+      
+      if (!usuario) {
         return false;
       }
 
       const userData = {
-        id: data.id,
-        codigo: data.codigo,
-        nome: data.nome
+        id: usuario.id,
+        codigo: usuario.codigo,
+        nome: usuario.nome
       };
 
       setUser(userData);

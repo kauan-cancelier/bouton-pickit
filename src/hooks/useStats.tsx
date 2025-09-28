@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { localStorageService, Lista } from "@/lib/localStorageService";
+import { getData } from "@/lib/storage";
+
+interface Lista {
+  id: string;
+  status: string;
+  updated_at: string;
+  concluida: boolean;
+  tempo_total: number;
+}
 
 interface Stats {
   listasPendentes: number;
@@ -16,36 +24,28 @@ export default function useStats() {
 
   useEffect(() => {
     const updateStats = () => {
-      const listas: Lista[] = localStorageService.getAllListas();
-      const hoje = new Date().toDateString();
+      try {
+        const listas = getData<Lista>('listas');
+        const hoje = new Date().toDateString();
 
-      let pendentes = 0;
-      let andamento = 0;
-      let concluidasHoje = 0;
-
-      listas.forEach(l => {
-        if (!l.concluida) {
-          if (l.tempo_total === 0) {
-            pendentes += 1;
-          } else {
-            andamento += 1;
-          }
-        } else {
-          const dataConclusao = new Date(l.updated_at).toDateString();
-          if (dataConclusao === hoje) {
-            concluidasHoje += 1;
-          }
-        }
-      });
-      setStats({ listasPendentes: pendentes, listasAndamento: andamento, listasConcluidasHoje: concluidasHoje });
+        setStats({
+          listasPendentes: listas.filter(l => l.status === 'pendente').length,
+          listasAndamento: listas.filter(l => l.status === 'em_andamento').length,
+          listasConcluidasHoje: listas.filter(l => 
+            l.status === 'concluida' && 
+            new Date(l.updated_at).toDateString() === hoje
+          ).length,
+        });
+      } catch (error) {
+        console.error('Erro ao calcular estatísticas:', error);
+      }
     };
 
-
-    // Atualiza imediatamente
     updateStats();
-
+    
+    // Atualizar a cada 5 segundos
     const interval = setInterval(updateStats, 5000);
-
+    
     return () => clearInterval(interval);
   }, []);
 

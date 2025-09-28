@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { processImageAndExtractItems } from "@/lib/ocrService";
 import { parseListText } from "@/lib/textParser";
-import { saveLista, getListaAtiva } from "@/lib/supabaseService";
+import { localStorageService } from "@/lib/localStorageService";
 import { useEffect, useState } from "react";
 import { ActionCard } from "@/components/ActionCard";
 import { BrandHeader } from "@/components/BrandHeader";
@@ -21,7 +21,7 @@ export default function Home() {
 
   const checkActiveList = async () => {
     try {
-      const activeList = await getListaAtiva();
+      const activeList = localStorageService.getListaAtiva();
       if (activeList) {
         // Há uma lista ativa, perguntar se quer continuar
         const continueList = confirm(`Você tem uma lista em andamento: "${activeList.lista.nome}". Deseja continuar?`);
@@ -77,8 +77,8 @@ export default function Home() {
 
           const items = await processImageAndExtractItems(blob);
           
-          // Save to Supabase
-          const lista = await saveLista(`Lista Escaneada ${new Date().toLocaleDateString()}`, items);
+            // Save to localStorage
+            const lista = localStorageService.saveLista(`Lista Escaneada ${new Date().toLocaleDateString()}`, items);
           
           // Store locally and navigate
           localStorage.setItem('currentList', JSON.stringify({
@@ -113,8 +113,8 @@ export default function Home() {
 
             const items = await processImageAndExtractItems(file);
             
-            // Save to Supabase
-            const lista = await saveLista(`Lista Escaneada ${new Date().toLocaleDateString()}`, items);
+            // Save to localStorage
+            const lista = localStorageService.saveLista(`Lista Escaneada ${new Date().toLocaleDateString()}`, items);
             
             // Store locally and navigate
             localStorage.setItem('currentList', JSON.stringify({
@@ -177,8 +177,8 @@ export default function Home() {
           return;
         }
 
-        // Save to Supabase
-        const lista = await saveLista(file.name, items);
+        // Save to localStorage
+        const lista = localStorageService.saveLista(file.name, items);
 
         // Store the parsed items and navigate to list view
         localStorage.setItem('currentList', JSON.stringify({

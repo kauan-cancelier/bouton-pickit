@@ -1,5 +1,5 @@
-
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import { getData } from "@/lib/storage";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Clock, CheckCircle, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,11 +27,10 @@ export default function History() {
 
   const loadHistory = () => {
     try {
-      const storedListas = localStorage.getItem("listas");
-      const parsedListas: Lista[] = storedListas ? JSON.parse(storedListas) : [];
+      const listas = getData<Lista>("listas");
 
       // pega só as concluídas
-      const concluidas = parsedListas.filter((l) => l.concluida);
+      const concluidas = listas.filter((l) => l.concluida);
 
       // ordena por data de criação decrescente
       concluidas.sort(
@@ -48,13 +47,18 @@ export default function History() {
 
   const handleContinueList = (lista: Lista) => {
     try {
-      const storedItens = localStorage.getItem(`itens_${lista.id}`);
-      const itens = storedItens ? JSON.parse(storedItens) : [];
+      const itens = getData<any>("itens").filter(i => i.lista_id === lista.id);
 
       const listData = {
         id: lista.id,
         nome: lista.nome,
-        items: itens,
+        items: itens.map(item => ({
+          pos: item.pos,
+          codigo: item.codigo,
+          descricao: item.descricao,
+          quantidade: item.quantidade,
+          concluido: item.concluido
+        })),
         startTime: new Date(lista.data_inicio).getTime(),
         tempoTotal: lista.tempo_total,
       };

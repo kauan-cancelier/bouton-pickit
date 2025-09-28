@@ -28,14 +28,7 @@ interface Item {
   concluido: boolean;
 }
 
-function getData<T>(key: string): T[] {
-  const raw = localStorage.getItem(key);
-  return raw ? JSON.parse(raw) : [];
-}
-
-function setData<T>(key: string, data: T[]) {
-  localStorage.setItem(key, JSON.stringify(data));
-}
+import { getData, setData } from "@/lib/storage";
 
 export default function PickingLists() {
   const navigate = useNavigate();
