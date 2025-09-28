@@ -81,14 +81,6 @@ export default function Login() {
               {isLoading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
-          
-          <div className="mt-6 p-3 bg-muted rounded-md text-sm text-muted-foreground">
-            <p className="font-medium mb-2">Usuários disponíveis:</p>
-            <p>• admin - Senha: 123</p>
-            <p>• picker1 - Senha: 123</p>
-            <p>• picker2 - Senha: 123</p>
-            <p>• picker3 - Senha: 123</p>
-          </div>
         </CardContent>
       </Card>
     </div>
