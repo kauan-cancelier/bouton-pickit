@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { processImageAndExtractItems } from "@/lib/ocrService";
 import { parseListText } from "@/lib/textParser";
 import { localStorageService } from "@/lib/localStorageService";
-import { initializeLocalStorage } from "@/lib/initializeData";
+import { initializeLocalStorage, populateMockData } from "@/lib/initializeData";
 import useStats from "@/hooks/useStats";
 
 import { Header } from "@/components/dashboard/Header";
@@ -106,9 +106,18 @@ export default function Dashboard() {
     // Futuro: filtrar dados do gráfico de acordo com a data
   };
 
+  const handlePopulateMockData = () => {
+    populateMockData();
+    toast({
+      title: "Dados populados!",
+      description: "Sistema populado com listas e itens de exemplo"
+    });
+    window.location.reload();
+  };
+
   return (
     <div className="min-h-screen bg-background p-4 space-y-6">
-      <Header user={user} logout={logout} />
+      <Header user={user} logout={logout} onPopulateMockData={handlePopulateMockData} />
       <ImportList handleScanList={handleScanList} handleImportTxt={handleImportTxt} isProcessing={isProcessing} />
       <Summary stats={stats} navigate={navigate} />
       <VisualSummary data={chartData} onDateChange={handleDateChange} />
