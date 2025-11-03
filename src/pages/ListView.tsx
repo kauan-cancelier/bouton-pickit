@@ -48,6 +48,9 @@ export default function ListView() {
 
   const handleToggleItem = (pos: number) => {
     setItems(prevItems => {
+      const item = prevItems.find(i => i.pos === pos);
+      if (item?.foraDeEstoque) return prevItems; // Não permite marcar itens fora de estoque
+
       const newItems = prevItems.map(item => 
         item.pos === pos ? { ...item, concluido: !item.concluido } : item
       );
@@ -62,9 +65,10 @@ export default function ListView() {
         localStorageService.updateItemStatus(listData.id!, pos, !prevItems.find(item => item.pos === pos)?.concluido);
       }
 
-      // Verifica conclusão
-      const newCompletedCount = newItems.filter(item => item.concluido).length;
-      if (newCompletedCount === newItems.length && newItems.length > 0 && listData) {
+      // Verifica conclusão (ignora itens fora de estoque)
+      const itemsDisponiveis = newItems.filter(i => !i.foraDeEstoque);
+      const newCompletedCount = itemsDisponiveis.filter(item => item.concluido).length;
+      if (newCompletedCount === itemsDisponiveis.length && itemsDisponiveis.length > 0 && listData) {
         const updatedData = { ...listData, items: newItems, tempoTotal: time, concluida: true };
         localStorage.setItem('currentList', JSON.stringify(updatedData));
         localStorageService.completeLista(listData.id!);
@@ -72,19 +76,44 @@ export default function ListView() {
         // Redireciona para tela de conclusão
         toast({
           title: "Lista concluída!",
-          description: `${newItems.length} itens processados em ${Math.floor(time/60)}min`,
+          description: `${newCompletedCount} itens processados em ${Math.floor(time/60)}min`,
         });
         
         setTimeout(() => {
           navigate('/completed', { 
             state: { 
               totalTime: time,
-              totalItems: newItems.length,
+              totalItems: newCompletedCount,
               listName: listData.nome
             } 
           });
         }, 1000);
       }
+
+      return newItems;
+    });
+  };
+
+  const handleOutOfStock = (pos: number) => {
+    setItems(prevItems => {
+      const newItems = prevItems.map(item => 
+        item.pos === pos ? { ...item, foraDeEstoque: true, concluido: false } : item
+      );
+
+      // Atualiza localStorage
+      if (listData) {
+        const updatedData = { ...listData, items: newItems, tempoTotal: time };
+        localStorage.setItem('currentList', JSON.stringify(updatedData));
+
+        // Atualiza no storageService
+        localStorageService.updateItemOutOfStock(listData.id!, pos, true);
+      }
+
+      toast({
+        title: "Item marcado",
+        description: "Item marcado como fora de estoque",
+        variant: "default"
+      });
 
       return newItems;
     });
@@ -111,6 +140,7 @@ export default function ListView() {
             key={item.pos}
             item={item}
             onToggle={handleToggleItem}
+            onOutOfStock={handleOutOfStock}
           />
         ))}
       </div>

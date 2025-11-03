@@ -22,6 +22,7 @@ export interface ItemLista {
   descricao: string;
   quantidade: number;
   concluido: boolean;
+  foraDeEstoque?: boolean;
 }
 
 const LISTAS_KEY = 'listas';
@@ -65,7 +66,8 @@ export const localStorageService = {
       codigo: item.codigo,
       descricao: item.descricao,
       quantidade: item.quantidade,
-      concluido: item.concluido
+      concluido: item.concluido,
+      foraDeEstoque: item.foraDeEstoque || false
     }));
 
     setData(LISTAS_KEY, [...listas, novaLista]);
@@ -79,6 +81,16 @@ export const localStorageService = {
     const updated = itens.map(it =>
       it.lista_id === listaId && it.pos === pos
         ? { ...it, concluido }
+        : it
+    );
+    setData(ITENS_KEY, updated);
+  },
+
+  updateItemOutOfStock: (listaId: string, pos: number, foraDeEstoque: boolean) => {
+    const itens = getData<ItemLista>(ITENS_KEY);
+    const updated = itens.map(it =>
+      it.lista_id === listaId && it.pos === pos
+        ? { ...it, foraDeEstoque, concluido: foraDeEstoque ? false : it.concluido }
         : it
     );
     setData(ITENS_KEY, updated);

@@ -4,6 +4,7 @@ export interface ParsedItem {
   descricao: string;
   quantidade: number;
   concluido: boolean;
+  foraDeEstoque?: boolean;
 }
 
 export function parseListText(text: string): ParsedItem[] {

@@ -26,6 +26,7 @@ interface Item {
   descricao: string;
   quantidade: number;
   concluido: boolean;
+  foraDeEstoque?: boolean;
 }
 
 import { getData, setData } from "@/lib/storage";
@@ -86,7 +87,8 @@ export default function PickingLists() {
           codigo: item.codigo,
           descricao: item.descricao,
           quantidade: item.quantidade,
-          concluido: item.concluido
+          concluido: item.concluido,
+          foraDeEstoque: item.foraDeEstoque || false
         })),
         startTime: Date.now(),
         tempoTotal: lista.tempo_total || 0
@@ -111,7 +113,8 @@ export default function PickingLists() {
           codigo: item.codigo,
           descricao: item.descricao,
           quantidade: item.quantidade,
-          concluido: item.concluido // Usa o estado atual salvo
+          concluido: item.concluido,
+          foraDeEstoque: item.foraDeEstoque || false
         })),
         startTime: new Date(lista.data_inicio).getTime(),
         tempoTotal: lista.tempo_total || 0

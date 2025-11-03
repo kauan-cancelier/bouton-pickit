@@ -7,6 +7,8 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import PickingLists from "./pages/PickingLists";
+import DelegateLists from "./pages/DelegateLists";
+import Reports from "./pages/Reports";
 import ListView from "./pages/ListView";
 import CompletedView from "./pages/CompletedView";
 import History from "./pages/History";
@@ -48,6 +50,16 @@ const AppRoutes = () => {
         <Route path="/picking-lists" element={
           <ProtectedRoute>
             <PickingLists />
+          </ProtectedRoute>
+        } />
+        <Route path="/delegate-lists" element={
+          <ProtectedRoute>
+            <DelegateLists />
+          </ProtectedRoute>
+        } />
+        <Route path="/reports" element={
+          <ProtectedRoute>
+            <Reports />
           </ProtectedRoute>
         } />
         <Route path="/list" element={
