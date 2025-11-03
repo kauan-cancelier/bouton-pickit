@@ -3,9 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, TrendingUp, Users, Package, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { getData } from "@/lib/storage";
+
+type ChartConfig = {
+  [key: string]: {
+    label: string;
+    color: string;
+  };
+};
 
 interface Lista {
   id: string;
@@ -76,7 +83,7 @@ export default function Reports() {
     setUserStats(Object.values(stats));
   };
 
-  const chartConfig = {
+  const chartConfig: ChartConfig = {
     concluidas: {
       label: "Concluídas",
       color: "#22c55e",
@@ -89,7 +96,7 @@ export default function Reports() {
       label: "Pendentes",
       color: "#facc15",
     },
-  } satisfies ChartConfig;
+  };
 
   const pieData = userStats.map((stat, index) => ({
     name: stat.usuario,
