@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, UserPlus, Check } from "lucide-react";
+import { ArrowLeft, UserPlus, Check, Filter, Users, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { getData, setData } from "@/lib/storage";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Lista {
   id: string;
@@ -36,6 +37,7 @@ export default function DelegateLists() {
   const [listas, setListas] = useState<Lista[]>([]);
   const [selectedLists, setSelectedLists] = useState<string[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("");
+  const [filterStatus, setFilterStatus] = useState<"all" | "assigned" | "unassigned">("all");
 
   useEffect(() => {
     loadLists();
@@ -43,7 +45,7 @@ export default function DelegateLists() {
 
   const loadLists = () => {
     const listasData = getData<Lista>("listas")
-      .filter(l => l.status === "pendente")
+      .filter(l => l.status === "pendente" || l.status === "em_andamento")
       .sort((a, b) => b.created_at.localeCompare(a.created_at));
 
     const listasWithItems = listasData.map(lista => {
@@ -55,6 +57,24 @@ export default function DelegateLists() {
     });
 
     setListas(listasWithItems);
+  };
+
+  const filteredListas = listas.filter(lista => {
+    if (filterStatus === "assigned") return !!lista.user_codigo;
+    if (filterStatus === "unassigned") return !lista.user_codigo;
+    return true;
+  });
+
+  const stats = {
+    total: listas.length,
+    assigned: listas.filter(l => l.user_codigo).length,
+    unassigned: listas.filter(l => !l.user_codigo).length,
+    totalItems: listas.reduce((sum, l) => sum + (l.total_items || 0), 0)
+  };
+
+  const getUserName = (codigo?: string) => {
+    if (!codigo) return null;
+    return USUARIOS.find(u => u.codigo === codigo)?.nome || codigo;
   };
 
   const handleToggleList = (listaId: string) => {
@@ -132,6 +152,46 @@ export default function DelegateLists() {
       </div>
 
       <div className="p-4 space-y-6">
+        {/* Estatísticas */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <Package className="h-8 w-8 mx-auto mb-2 text-primary" />
+                <div className="text-2xl font-bold">{stats.total}</div>
+                <p className="text-xs text-muted-foreground">Total de Listas</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <Users className="h-8 w-8 mx-auto mb-2 text-green-500" />
+                <div className="text-2xl font-bold">{stats.assigned}</div>
+                <p className="text-xs text-muted-foreground">Atribuídas</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <Filter className="h-8 w-8 mx-auto mb-2 text-orange-500" />
+                <div className="text-2xl font-bold">{stats.unassigned}</div>
+                <p className="text-xs text-muted-foreground">Não Atribuídas</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <Package className="h-8 w-8 mx-auto mb-2 text-blue-500" />
+                <div className="text-2xl font-bold">{stats.totalItems}</div>
+                <p className="text-xs text-muted-foreground">Total de Itens</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Seção de Delegação */}
         {selectedLists.length > 0 && (
           <Card className="border-primary">
@@ -171,18 +231,29 @@ export default function DelegateLists() {
           </Card>
         )}
 
-        {/* Lista de Listas Pendentes */}
+        {/* Lista de Listas */}
         <div>
-          <h2 className="text-lg font-semibold mb-3">
-            Listas Pendentes ({listas.length})
-          </h2>
-          {listas.length === 0 ? (
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold">
+              Listas ({filteredListas.length})
+            </h2>
+            <Tabs value={filterStatus} onValueChange={(v) => setFilterStatus(v as any)}>
+              <TabsList>
+                <TabsTrigger value="all">Todas</TabsTrigger>
+                <TabsTrigger value="unassigned">Não Atribuídas</TabsTrigger>
+                <TabsTrigger value="assigned">Atribuídas</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+          {filteredListas.length === 0 ? (
             <Card className="text-center p-8">
               <h3 className="text-lg font-semibold text-foreground mb-2">
-                Nenhuma lista pendente
+                Nenhuma lista encontrada
               </h3>
               <p className="text-muted-foreground mb-4">
-                Todas as listas já foram atribuídas ou concluídas.
+                {filterStatus === "assigned" && "Não há listas atribuídas no momento."}
+                {filterStatus === "unassigned" && "Todas as listas já foram atribuídas."}
+                {filterStatus === "all" && "Não há listas disponíveis."}
               </p>
               <Button onClick={() => navigate("/dashboard")}>
                 Voltar ao Dashboard
@@ -190,28 +261,58 @@ export default function DelegateLists() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {listas.map((lista) => (
-                <Card 
-                  key={lista.id} 
-                  className={`cursor-pointer transition-all ${
-                    selectedLists.includes(lista.id) ? 'border-primary bg-primary/5' : ''
-                  }`}
-                  onClick={() => handleToggleList(lista.id)}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        checked={selectedLists.includes(lista.id)}
-                        onCheckedChange={() => handleToggleList(lista.id)}
-                        className="mt-1"
-                      />
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start">
-                          <div>
+              {filteredListas.map((lista) => {
+                const userName = getUserName(lista.user_codigo);
+                const isAssigned = !!lista.user_codigo;
+                
+                return (
+                  <Card 
+                    key={lista.id} 
+                    className={`cursor-pointer transition-all ${
+                      selectedLists.includes(lista.id) ? 'border-primary bg-primary/5' : ''
+                    }`}
+                    onClick={() => handleToggleList(lista.id)}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          checked={selectedLists.includes(lista.id)}
+                          onCheckedChange={() => handleToggleList(lista.id)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start mb-2">
                             <CardTitle className="text-base">{lista.nome}</CardTitle>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {lista.total_items} itens
-                            </p>
+                            <Badge 
+                              variant={isAssigned ? "default" : "secondary"}
+                              className={isAssigned ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"}
+                            >
+                              {lista.status === "em_andamento" ? "Em Andamento" : "Pendente"}
+                            </Badge>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Package className="h-4 w-4" />
+                              <span>{lista.total_items} itens</span>
+                            </div>
+                            
+                            {isAssigned ? (
+                              <div className="flex items-center gap-2">
+                                <Users className="h-4 w-4 text-green-600" />
+                                <span className="text-sm font-medium text-green-700">
+                                  Atribuída para: {userName}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <Users className="h-4 w-4 text-orange-600" />
+                                <span className="text-sm font-medium text-orange-700">
+                                  Não atribuída
+                                </span>
+                              </div>
+                            )}
+                            
                             <p className="text-xs text-muted-foreground">
                               Criado: {new Date(lista.created_at).toLocaleDateString("pt-BR", {
                                 day: "2-digit",
@@ -222,15 +323,12 @@ export default function DelegateLists() {
                               })}
                             </p>
                           </div>
-                          <Badge variant="default" className="bg-blue-100 text-blue-800">
-                            Pendente
-                          </Badge>
                         </div>
                       </div>
-                    </div>
-                  </CardHeader>
-                </Card>
-              ))}
+                    </CardHeader>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
