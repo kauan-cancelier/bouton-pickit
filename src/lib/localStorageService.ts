@@ -12,6 +12,9 @@ export interface Lista {
   user_codigo?: string;
   created_at: string;
   updated_at: string;
+  prioridade?: 'normal' | 'emergencial';
+  delegated_by?: string;
+  delegated_at?: string;
 }
 
 export interface ItemLista {
@@ -130,5 +133,27 @@ export const localStorageService = {
 
   getAllListas: (): Lista[] => {
     return getData<Lista>(LISTAS_KEY);
+  },
+
+  updateListaPrioridade: (listaId: string, prioridade: 'normal' | 'emergencial') => {
+    const listas = getData<Lista>(LISTAS_KEY);
+    const updated = listas.map(l =>
+      l.id === listaId ? { ...l, prioridade, updated_at: new Date().toISOString() } : l
+    );
+    setData(LISTAS_KEY, updated);
+  },
+
+  delegateLista: (listaId: string, userCodigo: string, delegatedBy: string) => {
+    const listas = getData<Lista>(LISTAS_KEY);
+    const updated = listas.map(l =>
+      l.id === listaId ? { 
+        ...l, 
+        user_codigo: userCodigo,
+        delegated_by: delegatedBy,
+        delegated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString() 
+      } : l
+    );
+    setData(LISTAS_KEY, updated);
   }
 };

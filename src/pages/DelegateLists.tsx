@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, UserPlus, Check, Filter, Users, Package } from "lucide-react";
+import { ArrowLeft, UserPlus, Check, Filter, Users, Package, AlertTriangle, Search, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { getData, setData } from "@/lib/storage";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/contexts/AuthContext";
+import { localStorageService } from "@/lib/localStorageService";
 
 interface Lista {
   id: string;
@@ -17,6 +20,10 @@ interface Lista {
   created_at: string;
   user_codigo?: string;
   total_items?: number;
+  prioridade?: 'normal' | 'emergencial';
+  delegated_by?: string;
+  delegated_at?: string;
+  updated_at: string;
 }
 
 interface Item {
@@ -34,10 +41,13 @@ const USUARIOS = [
 export default function DelegateLists() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [listas, setListas] = useState<Lista[]>([]);
   const [selectedLists, setSelectedLists] = useState<string[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<"all" | "assigned" | "unassigned">("all");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     loadLists();
@@ -60,8 +70,21 @@ export default function DelegateLists() {
   };
 
   const filteredListas = listas.filter(lista => {
-    if (filterStatus === "assigned") return !!lista.user_codigo;
-    if (filterStatus === "unassigned") return !lista.user_codigo;
+    // Filtro de status
+    if (filterStatus === "assigned" && !lista.user_codigo) return false;
+    if (filterStatus === "unassigned" && lista.user_codigo) return false;
+    
+    // Busca avançada
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      return (
+        lista.nome.toLowerCase().includes(search) ||
+        lista.id.toLowerCase().includes(search) ||
+        lista.user_codigo?.toLowerCase().includes(search) ||
+        getUserName(lista.user_codigo)?.toLowerCase().includes(search)
+      );
+    }
+    
     return true;
   });
 
@@ -104,28 +127,48 @@ export default function DelegateLists() {
       return;
     }
 
-    const listasData = getData<Lista>("listas");
-    const updated = listasData.map(lista => {
-      if (selectedLists.includes(lista.id)) {
-        return {
-          ...lista,
-          user_codigo: selectedUser,
-          updated_at: new Date().toISOString()
-        };
-      }
-      return lista;
-    });
-
-    setData("listas", updated);
-    
     const userName = USUARIOS.find(u => u.codigo === selectedUser)?.nome || selectedUser;
+    const delegatedBy = user?.nome || user?.codigo || "admin";
+    
+    // Delegar usando o serviço
+    selectedLists.forEach(listaId => {
+      localStorageService.delegateLista(listaId, selectedUser, delegatedBy);
+    });
+    
     toast({
       title: "Listas delegadas!",
-      description: `${selectedLists.length} lista(s) atribuída(s) a ${userName}`
+      description: `${selectedLists.length} lista(s) atribuída(s) a ${userName}`,
+      duration: 5000
     });
+
+    // Notificação adicional com detalhes
+    setTimeout(() => {
+      toast({
+        title: `📋 Delegação registrada`,
+        description: `Por ${delegatedBy} para ${userName} às ${new Date().toLocaleTimeString('pt-BR')}`,
+        duration: 4000
+      });
+    }, 1000);
 
     setSelectedLists([]);
     setSelectedUser("");
+    loadLists();
+  };
+
+  const handleTogglePriority = (listaId: string) => {
+    const lista = listas.find(l => l.id === listaId);
+    if (!lista) return;
+
+    const novaPrioridade = lista.prioridade === 'emergencial' ? 'normal' : 'emergencial';
+    localStorageService.updateListaPrioridade(listaId, novaPrioridade);
+    
+    toast({
+      title: novaPrioridade === 'emergencial' ? "🚨 Prioridade emergencial!" : "Prioridade normal",
+      description: `Lista "${lista.nome}" ${novaPrioridade === 'emergencial' ? 'marcada como emergencial' : 'voltou à prioridade normal'}`,
+      variant: novaPrioridade === 'emergencial' ? "destructive" : "default",
+      duration: 3000
+    });
+    
     loadLists();
   };
 
@@ -152,6 +195,68 @@ export default function DelegateLists() {
       </div>
 
       <div className="p-4 space-y-6">
+        {/* Busca Avançada */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome, ID ou usuário..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setShowHistory(!showHistory)}
+              >
+                <History className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Histórico de Delegações */}
+        {showHistory && (
+          <Card className="border-blue-200">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <History className="h-5 w-5" />
+                Histórico Recente
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {listas
+                  .filter(l => l.delegated_at)
+                  .sort((a, b) => new Date(b.delegated_at!).getTime() - new Date(a.delegated_at!).getTime())
+                  .slice(0, 5)
+                  .map(lista => (
+                    <div key={lista.id} className="flex justify-between items-center text-sm p-2 bg-muted/50 rounded">
+                      <div>
+                        <span className="font-medium">{lista.nome}</span>
+                        <p className="text-xs text-muted-foreground">
+                          Delegada por {lista.delegated_by} para {getUserName(lista.user_codigo)}
+                        </p>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(lista.delegated_at!).toLocaleString('pt-BR')}
+                      </span>
+                    </div>
+                  ))}
+                {listas.filter(l => l.delegated_at).length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Nenhuma delegação registrada
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Estatísticas */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Card>
@@ -263,32 +368,43 @@ export default function DelegateLists() {
             <div className="space-y-3">
               {filteredListas.map((lista) => {
                 const userName = getUserName(lista.user_codigo);
-                const isAssigned = !!lista.user_codigo;
+                 const isAssigned = !!lista.user_codigo;
+                const isPriority = lista.prioridade === 'emergencial';
                 
                 return (
                   <Card 
                     key={lista.id} 
-                    className={`cursor-pointer transition-all ${
+                    className={`transition-all ${
                       selectedLists.includes(lista.id) ? 'border-primary bg-primary/5' : ''
-                    }`}
-                    onClick={() => handleToggleList(lista.id)}
+                    } ${isPriority ? 'border-red-500 bg-red-50/50' : ''}`}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start gap-3">
                         <Checkbox
                           checked={selectedLists.includes(lista.id)}
                           onCheckedChange={() => handleToggleList(lista.id)}
+                          onClick={(e) => e.stopPropagation()}
                           className="mt-1"
                         />
                         <div className="flex-1">
-                          <div className="flex justify-between items-start mb-2">
-                            <CardTitle className="text-base">{lista.nome}</CardTitle>
-                            <Badge 
-                              variant={isAssigned ? "default" : "secondary"}
-                              className={isAssigned ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"}
-                            >
-                              {lista.status === "em_andamento" ? "Em Andamento" : "Pendente"}
-                            </Badge>
+                          <div className="flex justify-between items-start mb-2 gap-2">
+                            <div className="flex items-center gap-2">
+                              {isPriority && <AlertTriangle className="h-5 w-5 text-red-600" />}
+                              <CardTitle className="text-base">{lista.nome}</CardTitle>
+                            </div>
+                            <div className="flex gap-2">
+                              {isPriority && (
+                                <Badge variant="destructive" className="bg-red-600">
+                                  EMERGENCIAL
+                                </Badge>
+                              )}
+                              <Badge 
+                                variant={isAssigned ? "default" : "secondary"}
+                                className={isAssigned ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"}
+                              >
+                                {lista.status === "em_andamento" ? "Em Andamento" : "Pendente"}
+                              </Badge>
+                            </div>
                           </div>
                           
                           <div className="space-y-1">
@@ -322,6 +438,30 @@ export default function DelegateLists() {
                                 minute: "2-digit"
                               })}
                             </p>
+                            {lista.delegated_at && (
+                              <p className="text-xs text-blue-600 font-medium">
+                                Delegada por {lista.delegated_by} em {new Date(lista.delegated_at).toLocaleDateString("pt-BR", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  hour: "2-digit",
+                                  minute: "2-digit"
+                                })}
+                              </p>
+                            )}
+                          </div>
+                          <div className="mt-2">
+                            <Button
+                              variant={isPriority ? "destructive" : "outline"}
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTogglePriority(lista.id);
+                              }}
+                              className="w-full"
+                            >
+                              <AlertTriangle className="h-4 w-4 mr-2" />
+                              {isPriority ? "Remover Emergência" : "Marcar como Emergencial"}
+                            </Button>
                           </div>
                         </div>
                       </div>

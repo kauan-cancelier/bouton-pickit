@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock, Package, Play } from "lucide-react";
+import { ArrowLeft, Clock, Package, Play, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatTime } from "@/lib/textParser";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Lista {
   id: string;
@@ -16,6 +17,7 @@ interface Lista {
   user_codigo: string | null;
   created_at: string;
   total_items?: number;
+  prioridade?: 'normal' | 'emergencial';
 }
 
 interface Item {
@@ -36,6 +38,7 @@ export default function PickingLists() {
   const { user } = useAuth();
   const [listas, setListas] = useState<Lista[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"normal" | "emergencial">("normal");
 
   useEffect(() => {
     loadLists();
@@ -137,13 +140,17 @@ export default function PickingLists() {
     );
   }
 
-  const listasPendentes = listas.filter(l => l.status === "pendente");
-  const listasAndamento = listas.filter(l => l.status === "em_andamento");
+  const listasEmergenciais = listas.filter(l => l.prioridade === 'emergencial');
+  const listasNormais = listas.filter(l => l.prioridade !== 'emergencial');
+  
+  const listasFiltradas = activeTab === "emergencial" ? listasEmergenciais : listasNormais;
+  const listasPendentes = listasFiltradas.filter(l => l.status === "pendente");
+  const listasAndamento = listasFiltradas.filter(l => l.status === "em_andamento");
 
   return (
     <div className="min-h-screen bg-background">
       <div className="bg-background border-b border-border p-4 sticky top-0 z-10">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-4">
           <Button
             variant="ghost"
             size="icon"
@@ -160,6 +167,19 @@ export default function PickingLists() {
             </p>
           </div>
         </div>
+        
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "normal" | "emergencial")}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="normal" className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              Normal ({listasNormais.length})
+            </TabsTrigger>
+            <TabsTrigger value="emergencial" className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              Emergencial ({listasEmergenciais.length})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       <div className="p-4 space-y-6">
@@ -171,12 +191,17 @@ export default function PickingLists() {
               Em Andamento ({listasAndamento.length})
             </h2>
             <div className="space-y-3">
-              {listasAndamento.map((lista) => (
-                <Card key={lista.id} className="border-orange-200">
+              {listasAndamento.map((lista) => {
+                const isPriority = lista.prioridade === 'emergencial';
+                return (
+                <Card key={lista.id} className={`${isPriority ? 'border-red-500 bg-red-50/30' : 'border-orange-200'}`}>
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle className="text-base">{lista.nome}</CardTitle>
+                        <div className="flex items-center gap-2">
+                          {isPriority && <AlertTriangle className="h-5 w-5 text-red-600" />}
+                          <CardTitle className="text-base">{lista.nome}</CardTitle>
+                        </div>
                         <p className="text-sm text-muted-foreground mt-1">
                           {lista.total_items} itens • Usuário: {lista.user_codigo}
                         </p>
@@ -190,9 +215,16 @@ export default function PickingLists() {
                           })}
                         </p>
                       </div>
-                      <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                        Em Andamento
-                      </Badge>
+                      <div className="flex gap-2">
+                        {isPriority && (
+                          <Badge variant="destructive" className="bg-red-600">
+                            EMERGENCIAL
+                          </Badge>
+                        )}
+                        <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                          Em Andamento
+                        </Badge>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="pt-0">
@@ -211,7 +243,7 @@ export default function PickingLists() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              )})}
             </div>
           </div>
         )}
@@ -237,12 +269,17 @@ export default function PickingLists() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {listasPendentes.map((lista) => (
-                <Card key={lista.id} className="hover:shadow-md transition-shadow">
+              {listasPendentes.map((lista) => {
+                const isPriority = lista.prioridade === 'emergencial';
+                return (
+                <Card key={lista.id} className={`hover:shadow-md transition-shadow ${isPriority ? 'border-red-500 bg-red-50/30' : ''}`}>
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle className="text-base">{lista.nome}</CardTitle>
+                        <div className="flex items-center gap-2">
+                          {isPriority && <AlertTriangle className="h-5 w-5 text-red-600" />}
+                          <CardTitle className="text-base">{lista.nome}</CardTitle>
+                        </div>
                         <p className="text-sm text-muted-foreground mt-1">
                           {lista.total_items} itens
                         </p>
@@ -256,9 +293,16 @@ export default function PickingLists() {
                           })}
                         </p>
                       </div>
-                      <Badge variant="default" className="bg-blue-100 text-blue-800">
-                        Pendente
-                      </Badge>
+                      <div className="flex gap-2">
+                        {isPriority && (
+                          <Badge variant="destructive" className="bg-red-600">
+                            EMERGENCIAL
+                          </Badge>
+                        )}
+                        <Badge variant="default" className="bg-blue-100 text-blue-800">
+                          Pendente
+                        </Badge>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="pt-0">
@@ -273,7 +317,7 @@ export default function PickingLists() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              )})}
             </div>
           )}
         </div>
