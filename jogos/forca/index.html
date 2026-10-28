@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Forca</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #fff;
+    overflow: hidden;
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2vh 2vw;
+  }
+
+  header {
+    width: 100%;
+    max-width: 1400px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1vh 0 2vh;
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-size: clamp(28px, 4.5vw, 64px);
+    font-weight: 800;
+    letter-spacing: 1px;
+  }
+
+  #hint {
+    font-size: clamp(20px, 3vw, 42px);
+    color: #ffd166;
+    padding-bottom: 1.5vh;
+    flex-shrink: 0;
+  }
+
+  #gallows {
+    display: flex;
+    align-items: center;
+    gap: 4vw;
+    flex-shrink: 0;
+    padding-bottom: 1.5vh;
+  }
+
+  #parts {
+    font-size: clamp(50px, 10vmin, 120px);
+    letter-spacing: 0.5vmin;
+    font-family: monospace;
+    min-height: 12vmin;
+  }
+
+  #lives {
+    font-size: clamp(20px, 3vw, 40px);
+    font-weight: 600;
+    color: #f72585;
+  }
+
+  #word {
+    display: flex;
+    gap: 1.5vmin;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding-bottom: 2vh;
+    flex-shrink: 0;
+  }
+
+  .slot {
+    min-width: 6vmin;
+    height: 9vmin;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(28px, 6vmin, 72px);
+    font-weight: 800;
+    border-bottom: 0.7vmin solid #4cc9f0;
+  }
+
+  .slot.space { border-bottom: none; }
+
+  #kb {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.2vmin;
+    justify-content: center;
+    max-width: 110vmin;
+    flex: 1;
+    align-content: flex-start;
+  }
+
+  .key {
+    width: 9vmin;
+    height: 9vmin;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(20px, 4vmin, 48px);
+    font-weight: 700;
+    border-radius: 1.5vmin;
+    background: linear-gradient(145deg, #4361ee, #3a0ca3);
+    cursor: pointer;
+    border: 0.3vmin solid rgba(255,255,255,0.15);
+  }
+
+  .key:active { filter: brightness(1.4); }
+  .key.hit { background: #2b9348; pointer-events: none; }
+  .key.miss { background: #9d0208; opacity: 0.45; pointer-events: none; }
+
+  #overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 10, 25, 0.92);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3vh;
+    z-index: 10;
+    text-align: center;
+  }
+
+  #overlay.show { display: flex; }
+
+  #overlay h2 { font-size: clamp(40px, 8vw, 110px); }
+  #overlay h2.win { color: #06d6a0; }
+  #overlay h2.lose { color: #f72585; }
+  #overlay p { font-size: clamp(22px, 3.5vw, 48px); }
+
+  #next {
+    font-size: clamp(24px, 3.5vw, 48px);
+    font-weight: 700;
+    padding: 2.5vmin 6vmin;
+    border: none;
+    border-radius: 3vmin;
+    background: linear-gradient(145deg, #06d6a0, #118ab2);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 0.8vmin 1.6vmin rgba(0,0,0,0.4);
+  }
+
+  #next:active { transform: scale(0.96); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🪢 Forca</h1>
+  <div id="lives">Erros: <span id="errCount">0</span>/6</div>
+</header>
+
+<div id="hint"></div>
+<div id="gallows"><div id="parts"></div></div>
+<div id="word"></div>
+<div id="kb"></div>
+
+<div id="overlay">
+  <h2 id="resultTitle"></h2>
+  <p id="resultWord"></p>
+  <button id="next">Próxima palavra</button>
+</div>
+
+<script>
+// Palavras e dicas — edite esta lista para mudar o jogo
+const PALAVRAS = [
+  { palavra: 'ALGORITMO', dica: 'Sequência de passos para resolver um problema' },
+  { palavra: 'VARIAVEL',  dica: 'Espaço nomeado que guarda um valor' },
+  { palavra: 'COMPILADOR', dica: 'Traduz código-fonte para linguagem de máquina' },
+  { palavra: 'HERANCA',   dica: 'Pilar de POO em que uma classe reusa outra' },
+  { palavra: 'BANCO DE DADOS', dica: 'Onde as informações ficam persistidas' },
+  { palavra: 'FRAMEWORK', dica: 'Conjunto pronto de ferramentas para desenvolver' },
+  { palavra: 'INTERFACE', dica: 'Define o contrato, sem implementação' },
+  { palavra: 'DEPURACAO', dica: 'Processo de encontrar e corrigir bugs' },
+];
+
+const MAX_ERR = 6;
+const PARTES = ['', '😟', '😨', '😰', '😵', '🥴', '💀'];
+
+const partsEl = document.getElementById('parts');
+const hintEl = document.getElementById('hint');
+const wordEl = document.getElementById('word');
+const kbEl = document.getElementById('kb');
+const errEl = document.getElementById('errCount');
+const overlay = document.getElementById('overlay');
+const resultTitle = document.getElementById('resultTitle');
+const resultWord = document.getElementById('resultWord');
+const nextBtn = document.getElementById('next');
+
+let current, guessed, errors, done;
+
+function normalize(s) {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+}
+
+function build() {
+  const item = PALAVRAS[Math.floor(Math.random() * PALAVRAS.length)];
+  current = item;
+  guessed = new Set();
+  errors = 0;
+  done = false;
+  overlay.classList.remove('show');
+  errEl.textContent = '0';
+  partsEl.textContent = '';
+  hintEl.textContent = `💡 Dica: ${item.dica}`;
+  renderWord();
+  buildKb();
+}
+
+function renderWord() {
+  wordEl.innerHTML = '';
+  const norm = normalize(current.palavra);
+  current.palavra.split('').forEach((ch, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    if (ch === ' ') {
+      slot.classList.add('space');
+    } else {
+      slot.textContent = guessed.has(norm[i]) ? ch : '';
+    }
+    wordEl.appendChild(slot);
+  });
+}
+
+function buildKb() {
+  kbEl.innerHTML = '';
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(letra => {
+    const k = document.createElement('div');
+    k.className = 'key';
+    k.textContent = letra;
+    k.addEventListener('click', () => guess(letra, k));
+    kbEl.appendChild(k);
+  });
+}
+
+function guess(letra, keyEl) {
+  if (done) return;
+  const norm = normalize(current.palavra);
+  if (norm.includes(letra)) {
+    keyEl.classList.add('hit');
+    guessed.add(letra);
+    renderWord();
+    const allOpen = [...current.palavra].every((ch, i) => ch === ' ' || guessed.has(norm[i]));
+    if (allOpen) end(true);
+  } else {
+    keyEl.classList.add('miss');
+    errors++;
+    errEl.textContent = errors;
+    partsEl.textContent = PARTES[errors];
+    if (errors >= MAX_ERR) end(false);
+  }
+}
+
+function end(win) {
+  done = true;
+  setTimeout(() => {
+    resultTitle.textContent = win ? '🎉 Acertaram!' : '💀 Enforcado!';
+    resultTitle.className = win ? 'win' : 'lose';
+    resultWord.textContent = `A palavra era: ${current.palavra}`;
+    overlay.classList.add('show');
+  }, 400);
+}
+
+nextBtn.addEventListener('click', build);
+build();
+</script>
+</body>
+</html>

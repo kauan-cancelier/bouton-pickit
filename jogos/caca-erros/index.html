@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Caça-Erros</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #fff;
+    overflow: hidden;
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2vh 2vw;
+  }
+
+  header {
+    width: 100%;
+    max-width: 1400px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1vh 0 2vh;
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-size: clamp(28px, 4.5vw, 64px);
+    font-weight: 800;
+    letter-spacing: 1px;
+  }
+
+  .stats {
+    display: flex;
+    gap: 3vw;
+    font-size: clamp(18px, 2.5vw, 36px);
+    font-weight: 600;
+  }
+
+  .stats span { color: #ffd166; }
+
+  #challenge {
+    font-size: clamp(20px, 3vw, 42px);
+    color: #ffd166;
+    padding-bottom: 2vh;
+    flex-shrink: 0;
+  }
+
+  #code {
+    width: min(92vw, 1400px);
+    background: #0d1117;
+    border: 0.4vmin solid rgba(255,255,255,0.15);
+    border-radius: 2vmin;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .line {
+    display: flex;
+    align-items: center;
+    padding: 1.2vmin 2.5vmin;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    font-size: clamp(18px, 3vmin, 40px);
+    cursor: pointer;
+    white-space: pre;
+  }
+
+  .line:active { background: rgba(255,255,255,0.1); }
+
+  .line .num {
+    width: 4.5vmin;
+    color: #6e7681;
+    flex-shrink: 0;
+    user-select: none;
+  }
+
+  .line.bug { background: rgba(247, 37, 133, 0.25); }
+  .line.bug .code { color: #ff8fa3; }
+  .line.picked-not-bug { background: rgba(255, 209, 102, 0.15); }
+  .line.reveal { background: rgba(43, 147, 72, 0.3); }
+
+  #feedback {
+    font-size: clamp(20px, 3vw, 42px);
+    min-height: 8vmin;
+    padding: 2.5vh 0 1vh;
+    text-align: center;
+    max-width: 90vw;
+    flex-shrink: 0;
+  }
+
+  #nextBtn {
+    font-size: clamp(22px, 3vw, 44px);
+    font-weight: 700;
+    padding: 2vmin 6vmin;
+    border: none;
+    border-radius: 3vmin;
+    background: linear-gradient(145deg, #06d6a0, #118ab2);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 0.8vmin 1.6vmin rgba(0,0,0,0.4);
+    display: none;
+    flex-shrink: 0;
+  }
+
+  #nextBtn.show { display: block; }
+  #nextBtn:active { transform: scale(0.96); }
+
+  #overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 10, 25, 0.94);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3vh;
+    z-index: 10;
+    text-align: center;
+    padding: 4vw;
+  }
+
+  #overlay.show { display: flex; }
+  #overlay h2 { font-size: clamp(40px, 8vw, 110px); color: #ffd166; }
+  #overlay p { font-size: clamp(22px, 3.5vw, 48px); }
+
+  #overlay button {
+    font-size: clamp(24px, 3.5vw, 48px);
+    font-weight: 700;
+    padding: 2.5vmin 6vmin;
+    border: none;
+    border-radius: 3vmin;
+    background: linear-gradient(145deg, #06d6a0, #118ab2);
+    color: #fff;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🐛 Caça-Erros</h1>
+  <div class="stats">
+    <div>Pontos: <span id="score">0</span></div>
+    <div>Desafio: <span id="progress">1</span></div>
+  </div>
+</header>
+
+<div id="challenge"></div>
+<div id="code"></div>
+<div id="feedback">Toque na linha que tem o bug! 👆</div>
+<button id="nextBtn">Próximo desafio</button>
+
+<div id="overlay">
+  <h2 id="finalTitle"></h2>
+  <p id="finalText"></p>
+  <button id="restart">Jogar de novo</button>
+</div>
+
+<script>
+// Desafios — edite: título, linhas de código, índice da linha com bug (0-based), explicação
+const DESAFIOS = [
+  {
+    titulo: 'Java — soma dos números de 1 a 10',
+    linhas: [
+      'int soma = 0;',
+      'for (int i = 1; i < 10; i++) {',
+      '    soma += i;',
+      '}',
+      'System.out.println(soma); // esperado: 55'
+    ],
+    bug: 1,
+    explicacao: 'i < 10 para no 9 — deveria ser i <= 10. Resultado imprime 45, não 55.'
+  },
+  {
+    titulo: 'Python — verificar maioridade',
+    linhas: [
+      'idade = int(input("Idade: "))',
+      'if idade = 18:',
+      '    print("Maior de idade")',
+      'else:',
+      '    print("Menor de idade")'
+    ],
+    bug: 1,
+    explicacao: 'Comparação usa ==, não =. "idade = 18" é atribuição e dá erro de sintaxe.'
+  },
+  {
+    titulo: 'JavaScript — média de notas',
+    linhas: [
+      'const notas = [7, 8, 9];',
+      'let total = 0;',
+      'for (let i = 0; i <= notas.length; i++) {',
+      '    total += notas[i];',
+      '}',
+      'console.log(total / notas.length);'
+    ],
+    bug: 2,
+    explicacao: 'i <= notas.length acessa notas[3], que é undefined. Deveria ser i < notas.length.'
+  },
+  {
+    titulo: 'SQL — listar alunos aprovados',
+    linhas: [
+      'SELECT nome, nota',
+      'FROM alunos',
+      'WHERE nota > 6,0',
+      'ORDER BY nota DESC;'
+    ],
+    bug: 2,
+    explicacao: 'Decimal em SQL usa ponto: nota > 6.0. Vírgula vira separador de colunas e quebra a query.'
+  },
+  {
+    titulo: 'Java — troca de valores',
+    linhas: [
+      'int a = 5, b = 9;',
+      'a = b;',
+      'b = a;',
+      '// esperado: a=9, b=5'
+    ],
+    bug: 1,
+    explicacao: 'Falta variável temporária: depois de a = b, o valor original de a se perdeu. b fica 9.'
+  },
+];
+
+const chEl = document.getElementById('challenge');
+const codeEl = document.getElementById('code');
+const fbEl = document.getElementById('feedback');
+const nextBtn = document.getElementById('nextBtn');
+const scoreEl = document.getElementById('score');
+const progEl = document.getElementById('progress');
+const overlay = document.getElementById('overlay');
+const finalTitle = document.getElementById('finalTitle');
+const finalText = document.getElementById('finalText');
+const restartBtn = document.getElementById('restart');
+
+let idx = 0, score = 0, tentativas = 0, found = false;
+
+function build() {
+  idx = 0;
+  score = 0;
+  scoreEl.textContent = '0';
+  overlay.classList.remove('show');
+  showChallenge();
+}
+
+function showChallenge() {
+  found = false;
+  tentativas = 0;
+  const d = DESAFIOS[idx];
+  progEl.textContent = `${idx + 1}/${DESAFIOS.length}`;
+  chEl.textContent = d.titulo;
+  fbEl.textContent = 'Toque na linha que tem o bug! 👆';
+  nextBtn.classList.remove('show');
+  codeEl.innerHTML = '';
+  d.linhas.forEach((txt, i) => {
+    const l = document.createElement('div');
+    l.className = 'line';
+    l.innerHTML = `<span class="num">${i + 1}</span><span class="code"></span>`;
+    l.querySelector('.code').textContent = txt;
+    l.addEventListener('click', () => pick(i, l));
+    codeEl.appendChild(l);
+  });
+}
+
+function pick(i, el) {
+  if (found) return;
+  const d = DESAFIOS[idx];
+  if (i === d.bug) {
+    found = true;
+    el.classList.add('reveal');
+    const pontos = tentativas === 0 ? 10 : 5;
+    score += pontos;
+    scoreEl.textContent = score;
+    fbEl.textContent = `✅ Acertou! +${pontos} pts — ${d.explicacao}`;
+    nextBtn.classList.add('show');
+  } else {
+    tentativas++;
+    el.classList.add('picked-not-bug');
+    fbEl.textContent = '❌ Essa linha está ok — tenta de novo!';
+  }
+}
+
+nextBtn.addEventListener('click', () => {
+  idx++;
+  if (idx < DESAFIOS.length) showChallenge();
+  else end();
+});
+
+function end() {
+  const max = DESAFIOS.length * 10;
+  finalTitle.textContent = score >= max * 0.7 ? '🏆 Debugadores!' : '🔍 Bom olho!';
+  finalText.textContent = `Pontuação final: ${score} de ${max} pontos`;
+  overlay.classList.add('show');
+}
+
+restartBtn.addEventListener('click', build);
+build();
+</script>
+</body>
+</html>

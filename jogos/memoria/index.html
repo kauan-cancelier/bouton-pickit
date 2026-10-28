@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Jogo da Memória</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #fff;
+    overflow: hidden;
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2vh 2vw;
+  }
+
+  header {
+    width: 100%;
+    max-width: 1400px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1vh 0 2.5vh;
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-size: clamp(28px, 4.5vw, 64px);
+    font-weight: 800;
+    letter-spacing: 1px;
+  }
+
+  .stats {
+    display: flex;
+    gap: 3vw;
+    font-size: clamp(18px, 2.5vw, 36px);
+    font-weight: 600;
+  }
+
+  .stats span { color: #ffd166; }
+
+  #board {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2vmin;
+    width: min(92vw, calc((100vh - 22vh) * 4 / 3));
+    flex: 1;
+    max-height: 78vh;
+  }
+
+  .card {
+    position: relative;
+    perspective: 800px;
+    cursor: pointer;
+    border-radius: 2vmin;
+  }
+
+  .card-inner {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    transition: transform 0.35s ease;
+  }
+
+  .card.flipped .card-inner,
+  .card.matched .card-inner { transform: rotateY(180deg); }
+
+  .face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2vmin;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  .face.back {
+    background: linear-gradient(145deg, #4361ee, #3a0ca3);
+    font-size: clamp(30px, 6vmin, 80px);
+    box-shadow: 0 0.6vmin 1.2vmin rgba(0,0,0,0.4);
+    border: 0.4vmin solid rgba(255,255,255,0.15);
+  }
+
+  .card:active .face.back { filter: brightness(1.25); }
+
+  .face.front {
+    background: #f8f9fa;
+    transform: rotateY(180deg);
+    font-size: clamp(40px, 9vmin, 110px);
+    border: 0.4vmin solid #ffd166;
+  }
+
+  .card.matched { cursor: default; }
+  .card.matched .face.front {
+    background: #d8f3dc;
+    border-color: #52b788;
+    animation: pop 0.4s ease;
+  }
+
+  @keyframes pop {
+    0% { transform: rotateY(180deg) scale(1); }
+    50% { transform: rotateY(180deg) scale(1.08); }
+    100% { transform: rotateY(180deg) scale(1); }
+  }
+
+  #win {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 10, 25, 0.92);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3vh;
+    z-index: 10;
+    text-align: center;
+  }
+
+  #win.show { display: flex; }
+
+  #win h2 {
+    font-size: clamp(40px, 8vw, 110px);
+    color: #ffd166;
+  }
+
+  #win p { font-size: clamp(22px, 3.5vw, 48px); }
+
+  #restart {
+    font-size: clamp(24px, 3.5vw, 48px);
+    font-weight: 700;
+    padding: 2.5vmin 6vmin;
+    border: none;
+    border-radius: 3vmin;
+    background: linear-gradient(145deg, #06d6a0, #118ab2);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 0.8vmin 1.6vmin rgba(0,0,0,0.4);
+  }
+
+  #restart:active { transform: scale(0.96); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧠 Jogo da Memória</h1>
+  <div class="stats">
+    <div>Tentativas: <span id="moves">0</span></div>
+    <div>Tempo: <span id="time">0:00</span></div>
+  </div>
+</header>
+
+<div id="board"></div>
+
+<div id="win">
+  <h2>🎉 Parabéns!</h2>
+  <p id="winStats"></p>
+  <button id="restart">Jogar de novo</button>
+</div>
+
+<script>
+// Pares do jogo — edite esta lista para trocar os símbolos (8 pares = tabuleiro 4x4)
+const SIMBOLOS = ['🚀','⚡','🎮','🏆','💡','🔥','⭐','🎯'];
+
+let firstCard = null;
+let lock = false;
+let matches = 0;
+let moves = 0;
+let seconds = 0;
+let timer = null;
+
+const board = document.getElementById('board');
+const movesEl = document.getElementById('moves');
+const timeEl = document.getElementById('time');
+const winEl = document.getElementById('win');
+const winStats = document.getElementById('winStats');
+const restartBtn = document.getElementById('restart');
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function formatTime(s) {
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function startTimer() {
+  timer = setInterval(() => {
+    seconds++;
+    timeEl.textContent = formatTime(seconds);
+  }, 1000);
+}
+
+function build() {
+  firstCard = null;
+  lock = false;
+  matches = 0;
+  moves = 0;
+  seconds = 0;
+  clearInterval(timer);
+  timer = null;
+  movesEl.textContent = '0';
+  timeEl.textContent = '0:00';
+  winEl.classList.remove('show');
+  board.innerHTML = '';
+
+  shuffle([...SIMBOLOS, ...SIMBOLOS]).forEach(sym => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.symbol = sym;
+    card.innerHTML = `
+      <div class="card-inner">
+        <div class="face back">?</div>
+        <div class="face front">${sym}</div>
+      </div>`;
+    card.addEventListener('click', () => flip(card));
+    board.appendChild(card);
+  });
+}
+
+function flip(card) {
+  if (lock || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+  if (!timer) startTimer();
+
+  card.classList.add('flipped');
+
+  if (!firstCard) {
+    firstCard = card;
+    return;
+  }
+
+  moves++;
+  movesEl.textContent = moves;
+
+  if (firstCard.dataset.symbol === card.dataset.symbol) {
+    firstCard.classList.add('matched');
+    card.classList.add('matched');
+    firstCard = null;
+    matches++;
+    if (matches === SIMBOLOS.length) endGame();
+  } else {
+    lock = true;
+    const a = firstCard;
+    firstCard = null;
+    setTimeout(() => {
+      a.classList.remove('flipped');
+      card.classList.remove('flipped');
+      lock = false;
+    }, 900);
+  }
+}
+
+function endGame() {
+  clearInterval(timer);
+  setTimeout(() => {
+    winStats.textContent = `${moves} tentativas em ${formatTime(seconds)}`;
+    winEl.classList.add('show');
+  }, 600);
+}
+
+restartBtn.addEventListener('click', build);
+build();
+</script>
+</body>
+</html>

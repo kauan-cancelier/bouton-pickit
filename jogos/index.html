@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Jogos da Turma</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #fff;
+    overflow: hidden;
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3vh 2vw;
+  }
+
+  h1 {
+    font-size: clamp(32px, 5vw, 72px);
+    font-weight: 800;
+    letter-spacing: 1px;
+    padding-bottom: 1vh;
+  }
+
+  .sub {
+    font-size: clamp(18px, 2.5vw, 36px);
+    color: #ffd166;
+    padding-bottom: 4vh;
+  }
+
+  #menu {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3vmin;
+    width: min(92vw, 1400px);
+    flex: 1;
+    max-height: 72vh;
+  }
+
+  .game {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5vmin;
+    border-radius: 2.5vmin;
+    background: linear-gradient(145deg, #4361ee, #3a0ca3);
+    border: 0.4vmin solid rgba(255,255,255,0.15);
+    cursor: pointer;
+    text-decoration: none;
+    color: #fff;
+    box-shadow: 0 0.8vmin 1.6vmin rgba(0,0,0,0.4);
+    transition: transform 0.15s;
+  }
+
+  .game:active { transform: scale(0.96); filter: brightness(1.25); }
+
+  .game .emoji { font-size: clamp(50px, 10vmin, 120px); }
+  .game .nome { font-size: clamp(20px, 3.2vmin, 44px); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<h1>🎮 Jogos da Turma</h1>
+<div class="sub">Toque para jogar</div>
+
+<div id="menu">
+  <a class="game" href="memoria/"><span class="emoji">🧠</span><span class="nome">Memória</span></a>
+  <a class="game" href="velha/"><span class="emoji">❌</span><span class="nome">Jogo da Velha</span></a>
+  <a class="game" href="forca/"><span class="emoji">🪢</span><span class="nome">Forca</span></a>
+  <a class="game" href="roleta/"><span class="emoji">🎡</span><span class="nome">Roleta</span></a>
+  <a class="game" href="quiz/"><span class="emoji">⚡</span><span class="nome">Quiz Relâmpago</span></a>
+  <a class="game" href="caca-erros/"><span class="emoji">🐛</span><span class="nome">Caça-Erros</span></a>
+</div>
+
+</body>
+</html>

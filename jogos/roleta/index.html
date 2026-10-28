@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Roleta de Sorteio</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #fff;
+    overflow: hidden;
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2vh 2vw;
+  }
+
+  header {
+    width: 100%;
+    max-width: 1400px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1vh 0 2vh;
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-size: clamp(28px, 4.5vw, 64px);
+    font-weight: 800;
+    letter-spacing: 1px;
+  }
+
+  #winner {
+    font-size: clamp(22px, 3vw, 44px);
+    font-weight: 700;
+    color: #ffd166;
+    min-height: 6vmin;
+    flex-shrink: 0;
+  }
+
+  #wheelWrap {
+    position: relative;
+    width: min(80vmin, 90vw);
+    aspect-ratio: 1;
+    flex-shrink: 1;
+    min-height: 0;
+    cursor: pointer;
+  }
+
+  canvas {
+    width: 100%;
+    height: 100%;
+  }
+
+  #pointer {
+    position: absolute;
+    top: -2%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: clamp(30px, 6vmin, 70px);
+    z-index: 2;
+    filter: drop-shadow(0 0.4vmin 0.4vmin rgba(0,0,0,0.6));
+  }
+
+  #spinHint {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    font-size: clamp(16px, 2.5vmin, 32px);
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 0.3vmin 0.6vmin rgba(0,0,0,0.8);
+    background: radial-gradient(circle, rgba(0,0,0,0.55) 0 18%, transparent 19%);
+  }
+
+  #spinHint.hidden { display: none; }
+
+  .btns {
+    display: flex;
+    gap: 2vw;
+    margin-top: 2.5vh;
+    flex-shrink: 0;
+  }
+
+  button {
+    font-size: clamp(20px, 3vw, 42px);
+    font-weight: 700;
+    padding: 2vmin 5vmin;
+    border: none;
+    border-radius: 3vmin;
+    background: linear-gradient(145deg, #06d6a0, #118ab2);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 0.8vmin 1.6vmin rgba(0,0,0,0.4);
+  }
+
+  button:active { transform: scale(0.96); }
+  button.secondary { background: linear-gradient(145deg, #4361ee, #3a0ca3); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎡 Roleta</h1>
+  <div id="winner"></div>
+</header>
+
+<div id="wheelWrap">
+  <div id="pointer">▼</div>
+  <canvas id="wheel"></canvas>
+  <div id="spinHint">TOQUE<br>PARA GIRAR</div>
+</div>
+
+<div class="btns">
+  <button id="spin" class="secondary">Girar</button>
+  <button id="remove" class="secondary">Remover sorteado</button>
+</div>
+
+<script>
+// Nomes/itens da roleta — edite esta lista
+let NOMES = [
+  'Equipe 1', 'Equipe 2', 'Equipe 3', 'Equipe 4',
+  'Equipe 5', 'Equipe 6', 'Equipe 7', 'Equipe 8'
+];
+
+const CORES = ['#4361ee','#f72585','#06d6a0','#ffd166','#ff6b35','#7209b7','#4cc9f0','#ef476f','#118ab2','#e63946','#2b9348','#f77f00'];
+
+const canvas = document.getElementById('wheel');
+const ctx = canvas.getContext('2d');
+const winnerEl = document.getElementById('winner');
+const wrap = document.getElementById('wheelWrap');
+const hintEl = document.getElementById('spinHint');
+const spinBtn = document.getElementById('spin');
+const removeBtn = document.getElementById('remove');
+
+let angle = 0;
+let velocity = 0;
+let spinning = false;
+let lastWinner = null;
+
+function draw() {
+  const size = canvas.clientWidth * devicePixelRatio;
+  canvas.width = canvas.height = size;
+  const cx = size / 2;
+  const r = cx * 0.97;
+  const n = Math.max(NOMES.length, 1);
+  const seg = (Math.PI * 2) / n;
+
+  ctx.clearRect(0, 0, size, size);
+
+  for (let i = 0; i < n; i++) {
+    const a0 = angle + i * seg;
+    ctx.beginPath();
+    ctx.moveTo(cx, cx);
+    ctx.arc(cx, cx, r, a0, a0 + seg);
+    ctx.closePath();
+    ctx.fillStyle = CORES[i % CORES.length];
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = size * 0.006;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(cx, cx);
+    ctx.rotate(a0 + seg / 2);
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${size * 0.045}px 'Segoe UI', sans-serif`;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    const label = NOMES[i].length > 14 ? NOMES[i].slice(0, 13) + '…' : NOMES[i];
+    ctx.fillText(label, r * 0.92, 0);
+    ctx.restore();
+  }
+
+  ctx.beginPath();
+  ctx.arc(cx, cx, r * 0.16, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fill();
+  ctx.strokeStyle = '#ffd166';
+  ctx.lineWidth = size * 0.008;
+  ctx.stroke();
+}
+
+function tick() {
+  if (!spinning) return;
+  angle += velocity;
+  velocity *= 0.985;
+  draw();
+  if (velocity < 0.002) {
+    spinning = false;
+    velocity = 0;
+    showWinner();
+    return;
+  }
+  requestAnimationFrame(tick);
+}
+
+function showWinner() {
+  if (!NOMES.length) return;
+  const n = NOMES.length;
+  const seg = (Math.PI * 2) / n;
+  const a = ((Math.PI * 1.5 - angle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+  const i = Math.floor(a / seg);
+  lastWinner = NOMES[i];
+  winnerEl.textContent = `🏆 ${lastWinner}`;
+}
+
+function spin() {
+  if (spinning || NOMES.length === 0) return;
+  hintEl.classList.add('hidden');
+  winnerEl.textContent = '';
+  velocity = 0.25 + Math.random() * 0.2;
+  spinning = true;
+  tick();
+}
+
+wrap.addEventListener('click', spin);
+spinBtn.addEventListener('click', spin);
+
+removeBtn.addEventListener('click', () => {
+  if (spinning || lastWinner === null) return;
+  NOMES = NOMES.filter(n => n !== lastWinner);
+  lastWinner = null;
+  winnerEl.textContent = NOMES.length ? '' : 'Todos sorteados! 🎉';
+  draw();
+});
+
+draw();
+</script>
+</body>
+</html>

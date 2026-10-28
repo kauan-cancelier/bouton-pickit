@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Jogo da Velha</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #fff;
+    overflow: hidden;
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2vh 2vw;
+  }
+
+  header {
+    width: 100%;
+    max-width: 1400px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1vh 0 2.5vh;
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-size: clamp(28px, 4.5vw, 64px);
+    font-weight: 800;
+    letter-spacing: 1px;
+  }
+
+  .score {
+    display: flex;
+    gap: 3vw;
+    font-size: clamp(18px, 2.5vw, 36px);
+    font-weight: 600;
+  }
+
+  .score .x { color: #4cc9f0; }
+  .score .o { color: #f72585; }
+  .score .v { color: #ffd166; }
+
+  #turn {
+    font-size: clamp(20px, 3vw, 44px);
+    font-weight: 700;
+    padding-bottom: 2vh;
+    flex-shrink: 0;
+  }
+
+  #turn.x { color: #4cc9f0; }
+  #turn.o { color: #f72585; }
+  #turn.done { color: #ffd166; }
+
+  #board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5vmin;
+    width: min(88vw, 72vh);
+    aspect-ratio: 1;
+  }
+
+  .cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.07);
+    border: 0.4vmin solid rgba(255,255,255,0.15);
+    border-radius: 2vmin;
+    font-size: clamp(60px, 14vmin, 160px);
+    font-weight: 800;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .cell:active { background: rgba(255,255,255,0.18); }
+  .cell.x { color: #4cc9f0; }
+  .cell.o { color: #f72585; }
+  .cell.win {
+    background: #d8f3dc;
+    border-color: #52b788;
+    animation: pop 0.4s ease;
+  }
+
+  @keyframes pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+    100% { transform: scale(1); }
+  }
+
+  #reset {
+    margin-top: 3vh;
+    font-size: clamp(22px, 3vw, 44px);
+    font-weight: 700;
+    padding: 2vmin 6vmin;
+    border: none;
+    border-radius: 3vmin;
+    background: linear-gradient(145deg, #06d6a0, #118ab2);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 0.8vmin 1.6vmin rgba(0,0,0,0.4);
+  }
+
+  #reset:active { transform: scale(0.96); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>❌ Jogo da Velha</h1>
+  <div class="score">
+    <div class="x">X: <span id="scoreX">0</span></div>
+    <div class="v">Velha: <span id="scoreV">0</span></div>
+    <div class="o">O: <span id="scoreO">0</span></div>
+  </div>
+</header>
+
+<div id="turn" class="x">Vez do X</div>
+<div id="board"></div>
+<button id="reset">Nova partida</button>
+
+<script>
+const board = document.getElementById('board');
+const turnEl = document.getElementById('turn');
+const resetBtn = document.getElementById('reset');
+const scoreXEl = document.getElementById('scoreX');
+const scoreOEl = document.getElementById('scoreO');
+const scoreVEl = document.getElementById('scoreV');
+
+const LINES = [
+  [0,1,2],[3,4,5],[6,7,8],
+  [0,3,6],[1,4,7],[2,5,8],
+  [0,4,8],[2,4,6]
+];
+
+let cells = [];
+let grid = Array(9).fill(null);
+let current = 'X';
+let over = false;
+let scores = { X: 0, O: 0, V: 0 };
+
+function build() {
+  grid = Array(9).fill(null);
+  current = 'X';
+  over = false;
+  board.innerHTML = '';
+  cells = [];
+  for (let i = 0; i < 9; i++) {
+    const c = document.createElement('div');
+    c.className = 'cell';
+    c.addEventListener('click', () => play(i));
+    board.appendChild(c);
+    cells.push(c);
+  }
+  updateTurn();
+}
+
+function updateTurn(msg) {
+  turnEl.className = msg ? 'done' : current.toLowerCase();
+  turnEl.textContent = msg || `Vez do ${current}`;
+}
+
+function play(i) {
+  if (over || grid[i]) return;
+  grid[i] = current;
+  cells[i].textContent = current;
+  cells[i].classList.add(current.toLowerCase());
+
+  const win = LINES.find(l => l.every(j => grid[j] === current));
+  if (win) {
+    over = true;
+    win.forEach(j => cells[j].classList.add('win'));
+    scores[current]++;
+    (current === 'X' ? scoreXEl : scoreOEl).textContent = scores[current];
+    updateTurn(`${current} venceu! 🎉`);
+    return;
+  }
+
+  if (grid.every(Boolean)) {
+    over = true;
+    scores.V++;
+    scoreVEl.textContent = scores.V;
+    updateTurn('Deu velha! 🤝');
+    return;
+  }
+
+  current = current === 'X' ? 'O' : 'X';
+  updateTurn();
+}
+
+resetBtn.addEventListener('click', build);
+build();
+</script>
+</body>
+</html>
